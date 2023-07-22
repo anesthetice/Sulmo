@@ -1,4 +1,11 @@
+use std::{
+    fs,
+    io::{Read, Write},
+};
 use serde::{Serialize, Deserialize};
+use serde_json::{
+    self,
+};
 
 #[derive(Clone, Copy, Debug, Serialize, Deserialize)]
 pub struct AppConfig {
@@ -15,6 +22,23 @@ impl Default for AppConfig {
             timeout: 120.0,
             letters_per_minute: 600,
         }
+    }
+}
+
+impl AppConfig {
+    const FILEPATH: &'static str = "./sulmo.conf";
+    fn to_pretty_json(&self) -> String {
+        serde_json::to_string_pretty(self).unwrap()
+    }
+    pub fn from_file() -> Option<Self> {
+        let mut file = fs::OpenOptions::new().read(true).open(Self::FILEPATH).ok()?;
+        let mut buffer: Vec<u8> = Vec::new(); file.read_to_end(&mut buffer);
+        serde_json::from_slice::<Self>(&buffer).ok()
+    }
+    pub fn save(&self) -> std::io::Result<()> {
+        let mut file = fs::OpenOptions::new().create(true).write(true).truncate(true).open(Self::FILEPATH)?;
+        file.write_all(self.to_pretty_json().as_bytes())?;
+        return Ok(());
     }
 }
 
@@ -55,6 +79,8 @@ impl Default for LlamaConfig {
 }
 
 impl LlamaConfig {
+    const FILEPATH: &'static str = "./llama.conf";
+
     pub fn to_args(&self) -> Vec<String> {
         let mut arguments: Vec<String> = Vec::new();
         arguments.push("--n-predict".to_string());
@@ -70,5 +96,18 @@ impl LlamaConfig {
         arguments.push("--repeat-penalty".to_string());
         arguments.push(self.repeat_penalty.to_string());
         arguments
+    }
+    fn to_pretty_json(&self) -> String {
+        serde_json::to_string_pretty(self).unwrap()
+    }
+    pub fn from_file() -> Option<Self> {
+        let mut file = fs::OpenOptions::new().read(true).open(Self::FILEPATH).ok()?;
+        let mut buffer: Vec<u8> = Vec::new(); file.read_to_end(&mut buffer);
+        serde_json::from_slice::<Self>(&buffer).ok()
+    }
+    pub fn save(&self) -> std::io::Result<()> {
+        let mut file = fs::OpenOptions::new().create(true).write(true).truncate(true).open(Self::FILEPATH)?;
+        file.write_all(self.to_pretty_json().as_bytes())?;
+        return Ok(());
     }
 }

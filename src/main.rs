@@ -1,11 +1,9 @@
-use crossterm::style::Stylize;
 use std::{
     path::PathBuf,
     process::{Command, Stdio},
     io::{self, stdout, Read, Write},
     thread,
 };
-
 mod setup;
 use setup::{
     load_ggml_models,
@@ -42,7 +40,7 @@ fn main() {
                     chosen_model = ggml_models[num].clone();
                 }
             },
-            Err(error) => (),
+            Err(..) => (),
         }
         user_input.clear()
     }
@@ -81,5 +79,4 @@ fn main() {
         stdout().write_all(output_string.as_bytes()); stdout().flush(); output_string.clear();
         thread::sleep(std::time::Duration::from_secs(1));
     }
-
 }
