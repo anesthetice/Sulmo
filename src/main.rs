@@ -1,10 +1,9 @@
 use crossterm::style::Stylize;
 use std::{
     path::PathBuf,
-    process::Command,
-    io::{self, Write, stdout},
+    process::{Command, Stdio},
+    io::{self, stdout, Read, Write},
     thread,
-    time::Duration,
 };
 
 mod setup;
@@ -58,24 +57,29 @@ fn main() {
     args.push("--model".to_string()); args.push(chosen_model.to_str().unwrap().to_string());
     args.push("--prompt".to_string()); args.push(prompt.to_string());
 
-    let animation_thread_handle = thread::spawn(|| {
-        loop {
-            print!("|\r");
-            io::stdout().flush();
-            thread::sleep(Duration::from_millis(200));
-            print!("/\r");
-            io::stdout().flush();
-            thread::sleep(Duration::from_millis(200));
-            print!("-\r");
-            io::stdout().flush();
-            thread::sleep(Duration::from_millis(200));
-            print!("\\\r");
-            io::stdout().flush();
-            thread::sleep(Duration::from_millis(200));
-        }
-    });
-    let output = Command::new("llama-cpp/main").args(args).output().expect("failed to execute llama-cpp/main");
-    drop(animation_thread_handle);
-    println!("Response: {}", String::from_utf8_lossy(&output.stdout).replace(&prompt, ""));
+    let mut child = Command::new("llama-cpp/main")
+        .args(args)
+        .stdout(Stdio::piped())
+        .stderr(Stdio::null())
+        .stdin(Stdio::null())
+        .spawn()
+        .expect("failed to execute llama-cpp/main");
+
+    let mut child_stdout = child.stdout.take().unwrap();
+
+    let mut output_string: String = String::new();
+    let mut buffer: [u8; 1024] = [0; 1024];
+    while child.try_wait().unwrap().is_none() {
+        match child_stdout.read(&mut buffer) {
+            Ok(0) => break,
+            Ok(n) => {
+                let chunk = String::from_utf8_lossy(&buffer[..n]);
+                output_string.push_str(&chunk);
+            }
+            Err(error) => panic!("{}", error),
+        };
+        stdout().write_all(output_string.as_bytes()); stdout().flush(); output_string.clear();
+        thread::sleep(std::time::Duration::from_secs(1));
+    }
 
 }
