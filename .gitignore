@@ -1,5 +1,5 @@
 /target
-/tui-examples
+/examples
 /llama-cpp
 Cargo.lock
 /models/*.bin

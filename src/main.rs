@@ -2,20 +2,70 @@ use std::{
     path::PathBuf,
     process::{Command, Stdio},
     io::{self, stdout, Read, Write},
-    thread,
+};
+use ratatui::{
+    prelude::{CrosstermBackend, Backend},
+    Terminal,
+    Frame,
+};
+use crossterm::{
+    event::{self, Event, KeyCode, KeyEventKind},
+    execute,
+    terminal::{EnterAlternateScreen, LeaveAlternateScreen, enable_raw_mode, disable_raw_mode},
 };
 mod setup;
 use setup::{
     load_ggml_models,
-    load_llama_configuration, load_app_configuration,
+    load_llama_configuration,
+    load_app_configuration,
 };
-
 mod configs;
 use configs::{
     LlamaConfig,
     AppConfig,
 };
+mod utils;
+use utils::sleep;
 
+#[derive(PartialEq)]
+enum Mode {
+    Menu,
+    Interactive,
+    Settings,
+}
+
+struct Application {
+    mode: Mode,
+}
+
+impl Application {
+    pub fn new() -> Self {
+        Self {
+            mode: Mode::Menu,
+        }
+    }
+    pub fn run<B: Backend>(mut self, terminal: &mut Terminal<B>, ) -> io::Result<()>{
+        loop {
+            terminal.draw(|frame| {self.ui(frame)})?;
+            
+            if let Event::Key(key) = event::read()? {
+                if key.kind == KeyEventKind::Press {
+                    match key.code {
+                        KeyCode::Esc => {
+                            if self.mode != Mode::Menu {self.mode = Mode::Menu}
+                            else {return Ok(())}
+                        }
+                        _ => (),
+                    }
+                }
+            }
+        }
+        
+    }
+    pub fn ui<B:Backend>(&self, frame: &mut Frame<B>) {
+
+    }
+}
 
 fn main() {
     // setup
@@ -24,8 +74,24 @@ fn main() {
     let llama_config: LlamaConfig = load_llama_configuration();
     println!("         Loading ggml models...");
     let ggml_models: Vec<PathBuf> =  load_ggml_models();
-    println!("         Setup complete.\n\n\n");
+    println!("         Setup complete, entering text user interface...\n\n\n");
+    sleep(1.0);
 
+    // text-user-interface
+    let mut stdout = stdout();
+    enable_raw_mode().unwrap();
+    execute!(stdout, EnterAlternateScreen);
+    let backend = CrosstermBackend::new(stdout);
+    let mut terminal = Terminal::new(backend).unwrap();
+
+    let mut application: Application = Application::new();
+
+    application.run(&mut terminal);
+
+    execute!(terminal.backend_mut(), LeaveAlternateScreen);
+    disable_raw_mode();
+    
+/*    
     // choosing a model
     for (index, filepath) in ggml_models.iter().enumerate() {
         println!("{}. {}", index, filepath.file_name().unwrap_or("?".as_ref()).to_str().unwrap_or("?"))
@@ -79,4 +145,5 @@ fn main() {
         stdout().write_all(output_string.as_bytes()); stdout().flush(); output_string.clear();
         thread::sleep(std::time::Duration::from_secs(1));
     }
+    */
 }
