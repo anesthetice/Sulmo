@@ -1,12 +1,15 @@
+use core::num;
 use std::{
     path::PathBuf,
     process::{Command, Stdio},
-    io::{self, stdout, Read, Write},
+    io::{self, stdout, Read, Write}, slice::Chunks, fs::OpenOptions,
 };
 use ratatui::{
-    prelude::{CrosstermBackend, Backend},
+    prelude::{CrosstermBackend, Backend, Layout, Direction, Constraint, Alignment},
     Terminal,
     Frame,
+    widgets::{ListItem, List, Block, Borders, Paragraph, block, Tabs},
+    style::{Style, Color, Modifier}, text::Line,
 };
 use crossterm::{
     event::{self, Event, KeyCode, KeyEventKind},
@@ -25,23 +28,54 @@ use configs::{
     AppConfig,
 };
 mod utils;
-use utils::sleep;
+use utils::{sleep, pathbuf_to_string};
+
+const JANUARY_BLUE: Color = Color::Rgb(0, 161, 185);
+const VIVID_MALACHITE: Color = Color::Rgb(0, 185, 24);
 
 #[derive(PartialEq)]
 enum Mode {
-    Menu,
-    Interactive,
+    Home,
+    Chat,
     Settings,
+    Exit,
+}
+
+impl Mode {
+    pub const NUMBER_OF_MODES: usize = 3;
+    pub fn from_usize(number: usize) -> Self {
+        match number {
+            0 => Self::Home,
+            1 => Self::Chat,
+            2 => Self::Settings,
+            3 => Self::Exit,
+            _ => Self::Home,
+        }
+    }
+    pub fn to_usize(&self) -> usize {
+        match self {
+            Self::Home => 0,
+            Self::Chat => 1,
+            Self::Settings => 2,
+            Self::Exit => 3,
+        }
+    }
 }
 
 struct Application {
     mode: Mode,
+    mode_index: usize,
+    ggml_models: Vec<PathBuf>,
+    model_index: usize,
 }
 
 impl Application {
-    pub fn new() -> Self {
+    pub fn new(ggml_models: Vec<PathBuf>) -> Self {
         Self {
-            mode: Mode::Menu,
+            mode: Mode::Home,
+            mode_index: 0,
+            ggml_models: ggml_models,
+            model_index: 0,
         }
     }
     pub fn run<B: Backend>(mut self, terminal: &mut Terminal<B>, ) -> io::Result<()>{
@@ -52,8 +86,25 @@ impl Application {
                 if key.kind == KeyEventKind::Press {
                     match key.code {
                         KeyCode::Esc => {
-                            if self.mode != Mode::Menu {self.mode = Mode::Menu}
-                            else {return Ok(())}
+                            return Ok(());
+                        },
+                        KeyCode::Tab => {
+                            self.next_mode();
+                        },
+                        KeyCode::PageUp => {
+                            if self.mode == Mode::Chat {
+                                self.next_model();
+                            }
+                        },
+                        KeyCode::PageDown => {
+                            if self.mode == Mode::Chat {
+                                self.prev_model();
+                            }
+                        },
+                        KeyCode::Enter => {
+                            if self.mode == Mode::Exit {
+                                return Ok(());
+                            }
                         }
                         _ => (),
                     }
@@ -63,7 +114,21 @@ impl Application {
         
     }
     pub fn ui<B:Backend>(&self, frame: &mut Frame<B>) {
-
+        let chunks = Layout::default()
+            .direction(Direction::Vertical)
+            .constraints([Constraint::Length(3), Constraint::Min(0)])
+            .split(frame.size());
+        let tabs = Tabs::new(vec!["Home".to_string(), pathbuf_to_string(&self.ggml_models[self.model_index], 30, "?"), "Settings".to_string(), "Exit".to_string()])
+            .highlight_style(Style::default().add_modifier(Modifier::BOLD).fg(VIVID_MALACHITE))
+            .select(self.mode_index)
+            .block(Block::new()
+                .title(" Sulmo 0.0.1 ")
+                .borders(Borders::all())
+                .border_type(ratatui::widgets::BorderType::Rounded)
+                .title_alignment(Alignment::Center)
+                .style(Style::default().fg(JANUARY_BLUE))
+        );
+        frame.render_widget(tabs, chunks[0]);
     }
 }
 
@@ -84,14 +149,64 @@ fn main() {
     let backend = CrosstermBackend::new(stdout);
     let mut terminal = Terminal::new(backend).unwrap();
 
-    let mut application: Application = Application::new();
+    let mut application: Application = Application::new(ggml_models);
 
     application.run(&mut terminal);
 
     execute!(terminal.backend_mut(), LeaveAlternateScreen);
     disable_raw_mode();
-    
+}
+
+
+impl Application {
+    fn next_mode(&mut self) {
+        match self.mode {
+            Mode::Home => {
+                self.mode = Mode::Chat;
+                self.mode_index = self.mode.to_usize();
+            },
+            Mode::Chat => {
+                self.mode = Mode::Settings;
+                self.mode_index = self.mode.to_usize();
+            },
+            Mode::Settings => {
+                self.mode = Mode::Exit;
+                self.mode_index = self.mode.to_usize();
+            },
+            Mode::Exit => {
+                self.mode = Mode::Home;
+                self.mode_index = self.mode.to_usize();
+            },
+        }
+    }
+    fn next_model(&mut self) {
+        if self.model_index+1 < self.ggml_models.len() {
+            self.model_index+=1;
+        } else {
+            self.model_index=0;
+        }
+    }
+    fn prev_model(&mut self) {
+        if self.model_index > 0 {
+            self.model_index-=1;
+        } else {
+            self.model_index=self.ggml_models.len()-1
+        }
+    }
+}
+
+
+
 /*    
+
+.block(Block::new()
+                .title(" Sulmo 0.0.1 ")
+                .borders(Borders::all())
+                .border_type(ratatui::widgets::BorderType::Rounded)
+                .title_alignment(Alignment::Center)
+                .style(Style::default().fg(JANUARY_BLUE))
+            );
+
     // choosing a model
     for (index, filepath) in ggml_models.iter().enumerate() {
         println!("{}. {}", index, filepath.file_name().unwrap_or("?".as_ref()).to_str().unwrap_or("?"))
@@ -146,4 +261,3 @@ fn main() {
         thread::sleep(std::time::Duration::from_secs(1));
     }
     */
-}
