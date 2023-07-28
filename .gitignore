@@ -3,3 +3,4 @@
 /llama-cpp
 Cargo.lock
 /models/*.bin
+stdout.txt

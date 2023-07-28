@@ -38,7 +38,7 @@ pub fn load_ggml_models() -> Vec<PathBuf> {
         }
     }
     if ggml_models.len() == 0 {
-        println!("[ {} ] Failed to find a single ggml model.", "!!!!".yellow())
+        println!("[{}] Failed to find a single ggml model.", "FAILED".red())
     } else {
         println!("[  {}  ] Loaded ggml models.", "OK".green());
     }

@@ -13,10 +13,6 @@ pub fn pathbuf_to_string(pathbuf: &PathBuf, desired_length: usize, error_str: &s
     if filestem.len() > desired_length {
         String::from_iter([&filestem[0..desired_length-2], ".."])
     } else {
-        let mut string: String = String::from(filestem);
-        while string.len() < desired_length {
-            string.push(' ');
-        }
-        string
+        String::from(filestem)
     }
 }

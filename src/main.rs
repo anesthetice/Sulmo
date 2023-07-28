@@ -1,15 +1,15 @@
-use core::num;
 use std::{
     path::PathBuf,
     process::{Command, Stdio},
-    io::{self, stdout, Read, Write}, slice::Chunks, fs::OpenOptions,
+    io::{self, stdout, Read, Write},
 };
 use ratatui::{
-    prelude::{CrosstermBackend, Backend, Layout, Direction, Constraint, Alignment},
+    prelude::{CrosstermBackend, Backend, Layout, Direction, Constraint, Alignment, Margin},
     Terminal,
     Frame,
-    widgets::{ListItem, List, Block, Borders, Paragraph, block, Tabs},
-    style::{Style, Color, Modifier}, text::Line,
+    widgets::{ListItem, List, Block, Borders, Paragraph, Tabs, Wrap},
+    style::{Style, Color, Modifier},
+    text::{Span, Line}
 };
 use crossterm::{
     event::{self, Event, KeyCode, KeyEventKind},
@@ -118,17 +118,67 @@ impl Application {
             .direction(Direction::Vertical)
             .constraints([Constraint::Length(3), Constraint::Min(0)])
             .split(frame.size());
-        let tabs = Tabs::new(vec!["Home".to_string(), pathbuf_to_string(&self.ggml_models[self.model_index], 30, "?"), "Settings".to_string(), "Exit".to_string()])
+
+        let tabs = Tabs::new(vec!["Home".to_string(), pathbuf_to_string(&self.ggml_models[self.model_index], 35, "?"), "Settings".to_string(), "Exit".to_string()])
             .highlight_style(Style::default().add_modifier(Modifier::BOLD).fg(VIVID_MALACHITE))
             .select(self.mode_index)
             .block(Block::new()
                 .title(" Sulmo 0.0.1 ")
                 .borders(Borders::all())
                 .border_type(ratatui::widgets::BorderType::Rounded)
-                .title_alignment(Alignment::Center)
+                .title_alignment(Alignment::Right)
                 .style(Style::default().fg(JANUARY_BLUE))
         );
         frame.render_widget(tabs, chunks[0]);
+        match self.mode {
+            Mode::Home => {
+                let paragraph = Paragraph::new("Welcome to Sulmo, a terminal application designed to be a stylish yet barebones way of using llama.cpp to generate text")
+                    .alignment(Alignment::Center)
+                    .style(Style::default().fg(JANUARY_BLUE))
+                    .wrap(Wrap { trim: true });
+                let vertical_margin = {
+                    let height = chunks[1].height;
+                    if height % 2 == 1 {
+                        (height-1)/2
+                    } else {
+                        if height != 0 {
+                            (height/2)-1
+                        } else {
+                            0_u16
+                        }
+                    }
+                };
+                frame.render_widget(paragraph, chunks[1].inner(&Margin {vertical: vertical_margin, horizontal: 0}))
+            },
+            Mode::Chat => {},
+            Mode::Settings => {},
+            Mode::Exit => {
+                let text = Line::from(vec![
+                    Span::styled("Press '", Style::default()),
+                    Span::styled("Enter", Style::default().add_modifier(Modifier::BOLD)),
+                    Span::styled("' in this window or '", Style::default()),
+                    Span::styled("Esc", Style::default().add_modifier(Modifier::BOLD)),
+                    Span::styled("' anywhere to exit the application", Style::default()),
+                ]);
+                let paragraph = Paragraph::new(text)
+                    .alignment(Alignment::Center)
+                    .style(Style::default().fg(JANUARY_BLUE))
+                    .wrap(Wrap { trim: true });
+                let vertical_margin = {
+                    let height = chunks[1].height;
+                    if height % 2 == 1 {
+                        (height-1)/2
+                    } else {
+                        if height != 0 {
+                            (height/2)-1
+                        } else {
+                            0_u16
+                        }
+                    }
+                };
+                frame.render_widget(paragraph, chunks[1].inner(&Margin {vertical: vertical_margin, horizontal: 0}))
+            }
+        }
     }
 }
 
@@ -140,7 +190,7 @@ fn main() {
     println!("         Loading ggml models...");
     let ggml_models: Vec<PathBuf> =  load_ggml_models();
     println!("         Setup complete, entering text user interface...\n\n\n");
-    sleep(1.0);
+    sleep(0.1);
 
     // text-user-interface
     let mut stdout = stdout();
@@ -156,7 +206,6 @@ fn main() {
     execute!(terminal.backend_mut(), LeaveAlternateScreen);
     disable_raw_mode();
 }
-
 
 impl Application {
     fn next_mode(&mut self) {
