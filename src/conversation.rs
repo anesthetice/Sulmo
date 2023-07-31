@@ -36,7 +36,8 @@ impl Conversation {
                 .stdin(Stdio::null())
                 .spawn()
                 .expect("failed to execute llama-cpp/main");
-            let mut child_stdout = child.stdout.take().unwrap();   
+            let child_stdout = child.stdout.take().unwrap();
+            self.child = Some((child, child_stdout)); 
             self.input.clear();
         }
     }
@@ -55,7 +56,7 @@ impl Conversation {
     pub fn get_input(&self) -> &str {
         self.input.as_str()
     }
-    pub fn pop_front_input(&mut self) {
+    pub fn pop_back_input(&mut self) {
         if !self.input.is_empty() {
             match self.input.graphemes(true).last() {
                 Some(cluster) => {self.input = self.input.strip_suffix(cluster).unwrap().to_string()},

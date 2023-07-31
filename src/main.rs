@@ -85,6 +85,8 @@ impl Application {
     }
     pub fn run<B: Backend>(mut self, terminal: &mut Terminal<B>) -> io::Result<()>{
         loop {
+            self.conversations.iter_mut().for_each(|conv| {conv.check()});
+
             terminal.draw(|frame| {self.ui(frame)})?;
             
             if let Event::Key(key) = event::read()? {
@@ -97,7 +99,7 @@ impl Application {
                         }
                         KeyCode::Backspace => {
                             if self.mode == Mode::Chat {
-                                self.conversations[self.conversation_index].pop_front_input();
+                                self.conversations[self.conversation_index].pop_back_input();
                             }
                         }
                         KeyCode::Esc => {
@@ -120,7 +122,7 @@ impl Application {
                             if self.mode == Mode::Exit {
                                 return Ok(());
                             } else if self.mode == Mode::Chat {
-
+                                self.conversations[self.conversation_index].run(&self.llama_config, &self.app_config);
                             }
                         }
                         _ => (),
@@ -182,7 +184,18 @@ impl Application {
                         .border_type(ratatui::widgets::BorderType::Rounded)
                         .style(Style::default().fg(JANUARY_BLUE))
                     );
-                frame.render_widget(input_paragraph, chunks[2])
+                frame.render_widget(input_paragraph, chunks[2]);
+
+                let output_line = Line::from(self.conversations[self.conversation_index].get_output());
+                let output_paragraph = Paragraph::new(output_line)
+                    .alignment(Alignment::Center)
+                    .style(Style::default().fg(JANUARY_BLUE))
+                    .block(Block::new()
+                        .borders(Borders::all())
+                        .border_type(ratatui::widgets::BorderType::Rounded)
+                        .style(Style::default().fg(JANUARY_BLUE))
+                    );
+                frame.render_widget(output_paragraph, chunks[1]);
             },
             Mode::Settings => {},
             Mode::Exit => {
