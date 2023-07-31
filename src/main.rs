@@ -1,7 +1,6 @@
 use std::{
     path::PathBuf,
-    process::{Command, Stdio},
-    io::{self, stdout, Read, Write},
+    io::{self,stdout}
 };
 use ratatui::{
     prelude::{CrosstermBackend, Backend, Layout, Direction, Constraint, Alignment, Margin},
@@ -29,6 +28,8 @@ use configs::{
 };
 mod utils;
 use utils::{sleep, pathbuf_to_string};
+mod conversation;
+use conversation::Conversation;
 
 const JANUARY_BLUE: Color = Color::Rgb(0, 161, 185);
 const VIVID_MALACHITE: Color = Color::Rgb(0, 185, 24);
@@ -63,28 +64,42 @@ impl Mode {
 }
 
 struct Application {
+    app_config: AppConfig,
+    llama_config: LlamaConfig,
     mode: Mode,
     mode_index: usize,
-    ggml_models: Vec<PathBuf>,
-    model_index: usize,
+    conversations: Vec<Conversation>,
+    conversation_index: usize,
 }
 
 impl Application {
-    pub fn new(ggml_models: Vec<PathBuf>) -> Self {
+    pub fn new(app_config: AppConfig, llama_config: LlamaConfig, ggml_models: Vec<PathBuf>) -> Self {
         Self {
+            app_config: app_config,
+            llama_config: llama_config,
             mode: Mode::Home,
             mode_index: 0,
-            ggml_models: ggml_models,
-            model_index: 0,
+            conversations: ggml_models.into_iter().map(|model| {Conversation::new(model)}).collect(),
+            conversation_index: 0,
         }
     }
-    pub fn run<B: Backend>(mut self, terminal: &mut Terminal<B>, ) -> io::Result<()>{
+    pub fn run<B: Backend>(mut self, terminal: &mut Terminal<B>) -> io::Result<()>{
         loop {
             terminal.draw(|frame| {self.ui(frame)})?;
             
             if let Event::Key(key) = event::read()? {
                 if key.kind == KeyEventKind::Press {
                     match key.code {
+                        KeyCode::Char(chr) => {
+                            if self.mode == Mode::Chat {
+                                self.conversations[self.conversation_index].input.push(chr);
+                            }
+                        }
+                        KeyCode::Backspace => {
+                            if self.mode == Mode::Chat {
+                                self.conversations[self.conversation_index].pop_front_input();
+                            }
+                        }
                         KeyCode::Esc => {
                             return Ok(());
                         },
@@ -104,6 +119,8 @@ impl Application {
                         KeyCode::Enter => {
                             if self.mode == Mode::Exit {
                                 return Ok(());
+                            } else if self.mode == Mode::Chat {
+
                             }
                         }
                         _ => (),
@@ -119,7 +136,7 @@ impl Application {
             .constraints([Constraint::Length(3), Constraint::Min(0)])
             .split(frame.size());
 
-        let tabs = Tabs::new(vec!["Home".to_string(), pathbuf_to_string(&self.ggml_models[self.model_index], 35, "?"), "Settings".to_string(), "Exit".to_string()])
+        let tabs = Tabs::new(vec!["Home".to_string(), pathbuf_to_string(&self.conversations[self.conversation_index].model, 35, "?"), "Settings".to_string(), "Exit".to_string()])
             .highlight_style(Style::default().add_modifier(Modifier::BOLD).fg(VIVID_MALACHITE))
             .select(self.mode_index)
             .block(Block::new()
@@ -150,7 +167,23 @@ impl Application {
                 };
                 frame.render_widget(paragraph, chunks[1].inner(&Margin {vertical: vertical_margin, horizontal: 0}))
             },
-            Mode::Chat => {},
+            Mode::Chat => {
+                let chunks = Layout::default()
+                .direction(Direction::Vertical)
+                .constraints([Constraint::Length(3), Constraint::Min(0), Constraint::Length(3)])
+                .split(frame.size());
+
+                let input_line = Line::from(self.conversations[self.conversation_index].get_input());
+                let input_paragraph = Paragraph::new(input_line)
+                    .alignment(Alignment::Left)
+                    .style(Style::default().fg(JANUARY_BLUE))
+                    .block(Block::new()
+                        .borders(Borders::all())
+                        .border_type(ratatui::widgets::BorderType::Rounded)
+                        .style(Style::default().fg(JANUARY_BLUE))
+                    );
+                frame.render_widget(input_paragraph, chunks[2])
+            },
             Mode::Settings => {},
             Mode::Exit => {
                 let text = Line::from(vec![
@@ -199,7 +232,7 @@ fn main() {
     let backend = CrosstermBackend::new(stdout);
     let mut terminal = Terminal::new(backend).unwrap();
 
-    let mut application: Application = Application::new(ggml_models);
+    let application: Application = Application::new(app_config, llama_config, ggml_models);
 
     application.run(&mut terminal);
 
@@ -229,22 +262,20 @@ impl Application {
         }
     }
     fn next_model(&mut self) {
-        if self.model_index+1 < self.ggml_models.len() {
-            self.model_index+=1;
+        if self.conversation_index+1 < self.conversations.len() {
+            self.conversation_index+=1;
         } else {
-            self.model_index=0;
+            self.conversation_index=0;
         }
     }
     fn prev_model(&mut self) {
-        if self.model_index > 0 {
-            self.model_index-=1;
+        if self.conversation_index > 0 {
+            self.conversation_index-=1;
         } else {
-            self.model_index=self.ggml_models.len()-1
+            self.conversation_index=self.conversations.len()-1
         }
     }
 }
-
-
 
 /*    
 
@@ -256,47 +287,6 @@ impl Application {
                 .style(Style::default().fg(JANUARY_BLUE))
             );
 
-    // choosing a model
-    for (index, filepath) in ggml_models.iter().enumerate() {
-        println!("{}. {}", index, filepath.file_name().unwrap_or("?".as_ref()).to_str().unwrap_or("?"))
-    }
-    let mut chosen_model: PathBuf = PathBuf::new();
-    let mut user_input: String = String::new();
-    while !chosen_model.exists() {
-        stdout().write_all("Please select a model: ".as_bytes()); stdout().flush(); io::stdin().read_line(&mut user_input).expect("failed to read user input"); print!("\n");
-        match user_input.trim().parse::<usize>() {
-            Ok(num) => {
-                if num < ggml_models.len() {
-                    chosen_model = ggml_models[num].clone();
-                }
-            },
-            Err(..) => (),
-        }
-        user_input.clear()
-    }
-
-    // choosing a prompt
-    user_input.clear();
-    stdout().write_all("Prompt:".as_bytes()); stdout().flush(); io::stdin().read_line(&mut user_input).expect("failed to read user input"); print!("\n");
-    let prompt: String = format!("###Instruction: {} \\n###Response: ", user_input.trim());
-    drop(user_input);
-
-    let mut args: Vec<String> = llama_config.to_args();
-    args.push("--model".to_string()); args.push(chosen_model.to_str().unwrap().to_string());
-    args.push("--prompt".to_string()); args.push(prompt.to_string());
-
-    let mut child = Command::new("llama-cpp/main")
-        .args(args)
-        .stdout(Stdio::piped())
-        .stderr(Stdio::null())
-        .stdin(Stdio::null())
-        .spawn()
-        .expect("failed to execute llama-cpp/main");
-
-    let mut child_stdout = child.stdout.take().unwrap();
-
-    let mut output_string: String = String::new();
-    let mut buffer: [u8; 1024] = [0; 1024];
     while child.try_wait().unwrap().is_none() {
         match child_stdout.read(&mut buffer) {
             Ok(0) => break,
