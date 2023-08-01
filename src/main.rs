@@ -1,6 +1,6 @@
 use std::{
     path::PathBuf,
-    io::{self,stdout}
+    io::{self,stdout}, time::{Instant, Duration}
 };
 use ratatui::{
     prelude::{CrosstermBackend, Backend, Layout, Direction, Constraint, Alignment, Margin},
@@ -84,53 +84,62 @@ impl Application {
         }
     }
     pub fn run<B: Backend>(mut self, terminal: &mut Terminal<B>) -> io::Result<()>{
+        let mut last_tick = Instant::now();
+        let tick_rate: Duration = Duration::from_millis(self.app_config.tick_rate);
         loop {
-            self.conversations.iter_mut().for_each(|conv| {conv.check()});
-
             terminal.draw(|frame| {self.ui(frame)})?;
+
+            let timeout = tick_rate
+            .checked_sub(last_tick.elapsed())
+            .unwrap_or_else(|| Duration::from_secs(0));
             
-            if let Event::Key(key) = event::read()? {
-                if key.kind == KeyEventKind::Press {
-                    match key.code {
-                        KeyCode::Char(chr) => {
-                            if self.mode == Mode::Chat {
-                                self.conversations[self.conversation_index].input.push(chr);
+            if event::poll(Duration::from_millis(10)).unwrap() {
+                if let Event::Key(key) = event::read()? {
+                    if key.kind == KeyEventKind::Press {
+                        match key.code {
+                            KeyCode::Char(chr) => {
+                                if self.mode == Mode::Chat {
+                                    self.conversations[self.conversation_index].input.push(chr);
+                                }
                             }
-                        }
-                        KeyCode::Backspace => {
-                            if self.mode == Mode::Chat {
-                                self.conversations[self.conversation_index].pop_back_input();
+                            KeyCode::Backspace => {
+                                if self.mode == Mode::Chat {
+                                    self.conversations[self.conversation_index].pop_back_input();
+                                }
                             }
-                        }
-                        KeyCode::Esc => {
-                            return Ok(());
-                        },
-                        KeyCode::Tab => {
-                            self.next_mode();
-                        },
-                        KeyCode::PageUp => {
-                            if self.mode == Mode::Chat {
-                                self.next_model();
-                            }
-                        },
-                        KeyCode::PageDown => {
-                            if self.mode == Mode::Chat {
-                                self.prev_model();
-                            }
-                        },
-                        KeyCode::Enter => {
-                            if self.mode == Mode::Exit {
+                            KeyCode::Esc => {
                                 return Ok(());
-                            } else if self.mode == Mode::Chat {
-                                self.conversations[self.conversation_index].run(&self.llama_config, &self.app_config);
+                            },
+                            KeyCode::Tab => {
+                                self.next_mode();
+                            },
+                            KeyCode::PageUp => {
+                                if self.mode == Mode::Chat {
+                                    self.next_model();
+                                }
+                            },
+                            KeyCode::PageDown => {
+                                if self.mode == Mode::Chat {
+                                    self.prev_model();
+                                }
+                            },
+                            KeyCode::Enter => {
+                                if self.mode == Mode::Exit {
+                                    return Ok(());
+                                } else if self.mode == Mode::Chat {
+                                    self.conversations[self.conversation_index].run(&self.llama_config, &self.app_config);
+                                }
                             }
+                            _ => (),
                         }
-                        _ => (),
                     }
                 }
             }
+            if last_tick.elapsed() >= tick_rate {
+                self.on_tick();
+                last_tick = Instant::now();
+            }
         }
-        
     }
     pub fn ui<B:Backend>(&self, frame: &mut Frame<B>) {
         let chunks = Layout::default()
@@ -186,6 +195,7 @@ impl Application {
                     );
                 frame.render_widget(input_paragraph, chunks[2]);
 
+                
                 let output_line = Line::from(self.conversations[self.conversation_index].get_output());
                 let output_paragraph = Paragraph::new(output_line)
                     .alignment(Alignment::Center)
@@ -194,7 +204,8 @@ impl Application {
                         .borders(Borders::all())
                         .border_type(ratatui::widgets::BorderType::Rounded)
                         .style(Style::default().fg(JANUARY_BLUE))
-                    );
+                    )
+                    .wrap(Wrap {trim: true});
                 frame.render_widget(output_paragraph, chunks[1]);
             },
             Mode::Settings => {},
@@ -225,6 +236,9 @@ impl Application {
                 frame.render_widget(paragraph, chunks[1].inner(&Margin {vertical: vertical_margin, horizontal: 0}))
             }
         }
+    }
+    fn on_tick(&mut self) {
+        self.conversations.iter_mut().for_each(|conv| {conv.check()});
     }
 }
 
