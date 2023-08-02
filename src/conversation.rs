@@ -11,7 +11,9 @@ pub struct Conversation {
     pub input: String,
     pub output: String,
     pub buffer:  [u8; 2048],
-    pub child: Option<(Child, ChildStdout)>
+    pub child: Option<(Child, ChildStdout)>,
+    pub previous_input: String,
+    pub stripped: bool,
 }
 
 impl Conversation {
@@ -22,11 +24,15 @@ impl Conversation {
             output: String::new(),
             buffer: [0; 2048],
             child: None,
+            previous_input: String::new(),
+            stripped: false,
         }
     }
     pub fn run(&mut self, llama_config: &LlamaConfig, app_config: &AppConfig) {
         if self.child.is_none() {
             let mut args: Vec<String> = llama_config.to_args();
+            self.input = llama_config.to_prompt(&self.input);
+
             args.push("--model".to_string()); args.push(self.model.to_str().unwrap().to_string());
             args.push("--prompt".to_string()); args.push(self.input.clone());
             let mut child = Command::new("llama-cpp/main")
@@ -37,7 +43,8 @@ impl Conversation {
                 .spawn()
                 .expect("failed to execute llama-cpp/main");
             let child_stdout = child.stdout.take().unwrap();
-            self.child = Some((child, child_stdout)); 
+            self.child = Some((child, child_stdout));
+            self.previous_input = self.input.clone(); 
             self.input.clear();
         }
     }
@@ -48,6 +55,10 @@ impl Conversation {
                 Ok(n) => {
                     let chunk = String::from_utf8_lossy(&self.buffer[..n]);
                     self.output.push_str(&chunk);
+                    if !self.stripped && self.output.len() >= self.previous_input.len() {
+                        self.output = self.output[self.previous_input.len()..].to_string();
+                        self.stripped=true;
+                    }
                 },
                 Err(error) => panic!("{}", error),
             }

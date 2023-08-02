@@ -6,7 +6,7 @@ use ratatui::{
     prelude::{CrosstermBackend, Backend, Layout, Direction, Constraint, Alignment, Margin},
     Terminal,
     Frame,
-    widgets::{ListItem, List, Block, Borders, Paragraph, Tabs, Wrap},
+    widgets::{Block, Borders, Paragraph, Tabs, Wrap},
     style::{Style, Color, Modifier},
     text::{Span, Line}
 };
@@ -129,7 +129,17 @@ impl Application {
                                 } else if self.mode == Mode::Chat {
                                     self.conversations[self.conversation_index].run(&self.llama_config, &self.app_config);
                                 }
-                            }
+                            },
+                            KeyCode::End => {
+                                if self.mode == Mode::Chat {
+                                    self.conversations[self.conversation_index].child = None;
+                                }
+                            },
+                            KeyCode::Delete => {
+                                if self.mode == Mode::Chat {
+                                    self.conversations[self.conversation_index].output.clear();
+                                }
+                            },
                             _ => (),
                         }
                     }
@@ -160,7 +170,7 @@ impl Application {
         frame.render_widget(tabs, chunks[0]);
         match self.mode {
             Mode::Home => {
-                let paragraph = Paragraph::new("Welcome to Sulmo, a terminal application designed to be a stylish yet barebones way of using llama.cpp to generate text")
+                let paragraph = Paragraph::new("Welcome to Sulmo")
                     .alignment(Alignment::Center)
                     .style(Style::default().fg(JANUARY_BLUE))
                     .wrap(Wrap { trim: true });
