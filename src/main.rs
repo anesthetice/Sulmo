@@ -99,7 +99,7 @@ impl Application {
                         match key.code {
                             KeyCode::Char(chr) => {
                                 if self.mode == Mode::Chat {
-                                    self.conversations[self.conversation_index].input.push(chr);
+                                    self.conversations[self.conversation_index].push_char(chr);
                                 }
                             }
                             KeyCode::Backspace => {
@@ -132,12 +132,12 @@ impl Application {
                             },
                             KeyCode::End => {
                                 if self.mode == Mode::Chat {
-                                    self.conversations[self.conversation_index].child = None;
+                                    self.conversations[self.conversation_index].reset_child();
                                 }
                             },
                             KeyCode::Delete => {
                                 if self.mode == Mode::Chat {
-                                    self.conversations[self.conversation_index].output.clear();
+                                    self.conversations[self.conversation_index].clear_output();
                                 }
                             },
                             _ => (),
