@@ -73,6 +73,9 @@ pub struct LlamaConfig {
 
     // text that is always added after a prompt, space not included
     after_prompt: String,
+
+    // should the text that is added before and after a prompt be displayed
+    pub ba_displayed: bool,
 }
 
 impl Default for LlamaConfig {
@@ -86,6 +89,7 @@ impl Default for LlamaConfig {
             repeat_penalty: 1.15,
             before_prompt: String::from("###Instruction: "),
             after_prompt: String::from(" ###Response: "),
+            ba_displayed: false,
         }
     }
 }
