@@ -1,14 +1,16 @@
 use std::{
     process::{Command, Stdio, Child, ChildStdout},
     io::Read,
-    path::PathBuf,
+    path::PathBuf, vec,
 };
 use unicode_segmentation::UnicodeSegmentation;
 use crate::configs::{LlamaConfig, AppConfig};
 
 pub struct Conversation {
     pub model: PathBuf,
+    // the conversation chunk that the user can modify
     usr_chunk: ConversationChunk,
+    // the conversation chunk that may be being processed
     pro_chunk: ConversationChunk,
     past_chunks: Vec<ConversationChunk>,
     stripped: bool,
@@ -91,6 +93,13 @@ impl Conversation {
     }
     pub fn reset_child(&mut self) {
         self.child = None;
+    }
+    pub fn get_past_conversations_str(&self) -> Vec<(&str, &str)> {
+        let mut vector: Vec<(&str, &str)> = Vec::new();
+        self.past_chunks.iter().for_each(|chunk| {
+            vector.push((chunk.raw_input.as_str(), chunk.output.as_str()));
+        });
+        vector
     }
 }
 
