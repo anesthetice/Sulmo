@@ -1,8 +1,7 @@
 ### high importance
 * settings
-* conversations stored as lists
+* conversations persistance
 
 ### medium importance
 
-* automatic llama.cpp installation
 * get sysinfo

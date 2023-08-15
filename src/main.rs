@@ -15,6 +15,11 @@ use crossterm::{
     execute,
     terminal::{EnterAlternateScreen, LeaveAlternateScreen, enable_raw_mode, disable_raw_mode},
 };
+use clipboard::{
+    ClipboardProvider,
+    ClipboardContext,
+};
+
 mod setup;
 use setup::{
     load_ggml_models,
@@ -140,6 +145,13 @@ impl Application {
                                     self.conversations[self.conversation_index].clear_output();
                                 }
                             },
+                            KeyCode::Insert => {
+                                let rctx = ClipboardContext::new();
+                                if rctx.is_ok() {
+                                    let mut ctx: ClipboardContext = rctx.unwrap();
+                                    ctx.set_contents(self.conversations[self.conversation_index].get_output().to_string());
+                                }
+                            }
                             _ => (),
                         }
                     }
