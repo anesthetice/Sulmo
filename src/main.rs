@@ -6,9 +6,9 @@ use ratatui::{
     prelude::{CrosstermBackend, Backend, Layout, Direction, Constraint, Alignment, Margin},
     Terminal,
     Frame,
-    widgets::{Block, Borders, Paragraph, Tabs, Wrap, Padding},
+    widgets::{Block, Borders, Paragraph, Tabs, Wrap, Padding, ScrollbarState, Scrollbar, scrollbar, ScrollbarOrientation},
     style::{Style, Color, Modifier},
-    text::{Span, Line}
+    text::{Span, Line},
 };
 use crossterm::{
     event::{self, Event, KeyCode, KeyEventKind},
@@ -75,6 +75,8 @@ struct Application {
     mode_index: usize,
     conversations: Vec<Conversation>,
     conversation_index: usize,
+    scroll: u16,
+    scroll_state: ScrollbarState,
 }
 
 impl Application {
@@ -86,6 +88,8 @@ impl Application {
             mode_index: 0,
             conversations: ggml_models.into_iter().map(|model| {Conversation::new(model)}).collect(),
             conversation_index: 0,
+            scroll: 0,
+            scroll_state: ScrollbarState::default()
         }
     }
     pub fn run<B: Backend>(mut self, terminal: &mut Terminal<B>) -> io::Result<()>{
@@ -152,6 +156,14 @@ impl Application {
                                     ctx.set_contents(self.conversations[self.conversation_index].get_pro_output().to_string());
                                 }
                             }
+                            KeyCode::Up => {
+                                self.scroll = self.scroll.saturating_sub(1);
+                                self.scroll_state.prev()
+                            },
+                            KeyCode::Down => {
+                                self.scroll = self.scroll.saturating_add(1);
+                                self.scroll_state.next()
+                            },
                             _ => (),
                         }
                     }
@@ -163,7 +175,7 @@ impl Application {
             }
         }
     }
-    pub fn ui<B:Backend>(&self, frame: &mut Frame<B>) {
+    pub fn ui<B:Backend>(&mut self, frame: &mut Frame<B>) {
         let chunks = Layout::default()
             .direction(Direction::Vertical)
             .constraints([Constraint::Length(3), Constraint::Min(0)])
@@ -221,21 +233,33 @@ impl Application {
                 let mut lines = Vec::new();
                 self.conversations[self.conversation_index].get_past_conversations_str().iter().for_each(|chunk| {
                     lines.push(Line::styled(chunk.0, Style::default().fg(JANUARY_BLUE)).alignment(Alignment::Right));
+                    lines.push(Line::from(""));
                     lines.push(Line::styled(chunk.1, Style::default().fg(VIVID_MALACHITE)).alignment(Alignment::Left));
+                    lines.push(Line::from(""));
                 });
-                if !self.conversations[self.conversation_index].get_pro_input().is_empty() {lines.push(Line::styled(self.conversations[self.conversation_index].get_pro_input(), Style::default().fg(JANUARY_BLUE).add_modifier(Modifier::BOLD)).alignment(Alignment::Right))};
+                if !self.conversations[self.conversation_index].get_pro_input().is_empty() {lines.push(Line::styled(self.conversations[self.conversation_index].get_pro_input(), Style::default().fg(JANUARY_BLUE).add_modifier(Modifier::BOLD)).alignment(Alignment::Right)); lines.push(Line::from(""))};
                 if !self.conversations[self.conversation_index].get_pro_output().is_empty() {lines.push(Line::styled(self.conversations[self.conversation_index].get_pro_output(), Style::default().fg(VIVID_MALACHITE).add_modifier(Modifier::BOLD)).alignment(Alignment::Left))};
+                
+                self.scroll_state = self.scroll_state.content_length(lines.len() as u16);
+
+                let scrollbar = Scrollbar::default()
+                    .orientation(ScrollbarOrientation::VerticalRight)
+                    .symbols(scrollbar::VERTICAL)
+                    .begin_symbol(None)
+                    .end_symbol(None);
+
                 let output_paragraph = Paragraph::new(lines)
-                    .alignment(Alignment::Center)
+                    .scroll((self.scroll, 0))
                     .block(Block::new()
                         .padding(Padding::new(4, 4, 1, 1))
                         .borders(Borders::all())
                         .border_type(ratatui::widgets::BorderType::Rounded)
                         .style(Style::default().fg(JANUARY_BLUE))
                     )
-                .wrap(Wrap {trim: true});
+                    .wrap(Wrap {trim: true});
 
                 frame.render_widget(output_paragraph, chunks[1]);
+                frame.render_stateful_widget(scrollbar, chunks[1], &mut self.scroll_state)
             },
             Mode::Settings => {},
             Mode::Exit => {
