@@ -194,23 +194,46 @@ impl Application {
         frame.render_widget(tabs, chunks[0]);
         match self.mode {
             Mode::Home => {
-                let paragraph = Paragraph::new("Welcome to Sulmo")
+                let mut text = Vec::new();
+                let blank_line = Line::from("");
+
+                let intro_line = Line::from("Welcome to Sulmo, a terminal user interface designed to prompt llama.cpp compatible ggml models in your terminal.");
+                text.push(intro_line); text.push(blank_line.clone());
+                let tab_line = Line::from(vec![
+                    Span::styled("Press '", Style::default()),
+                    Span::styled("Tab", Style::default().add_modifier(Modifier::BOLD)),
+                    Span::styled("' to change menu.", Style::default()),
+                ]);
+                text.push(tab_line); text.push(blank_line.clone());
+                let pgupdown_line = Line::from(vec![
+                    Span::styled("Press '", Style::default()),
+                    Span::styled("PgUp", Style::default().add_modifier(Modifier::BOLD)),
+                    Span::styled("' or '", Style::default()),
+                    Span::styled("PgDown", Style::default().add_modifier(Modifier::BOLD)),
+                    Span::styled("' to change the model.", Style::default()),
+                ]);
+                text.push(pgupdown_line); text.push(blank_line.clone());
+                let enddel_line = Line::from(vec![
+                    Span::styled("Press '", Style::default()),
+                    Span::styled("End", Style::default().add_modifier(Modifier::BOLD)),
+                    Span::styled("' to stop the text generation and '", Style::default()),
+                    Span::styled("Del", Style::default().add_modifier(Modifier::BOLD)),
+                    Span::styled("' to delete the latest exchange.", Style::default()),
+                ]);
+                text.push(enddel_line); text.push(blank_line.clone());
+                let insert_line = Line::from(vec![
+                    Span::styled("Press '", Style::default()),
+                    Span::styled("Ins", Style::default().add_modifier(Modifier::BOLD)),
+                    Span::styled("' to copy to your clipboard the latest message generated or being generated.", Style::default()),
+                ]);
+                text.push(insert_line); text.push(blank_line.clone());
+                text.push(Line::from("Use the arrow keys to scroll up and down your conversation"));
+
+                let paragraph = Paragraph::new(text)
                     .alignment(Alignment::Center)
                     .style(Style::default().fg(JANUARY_BLUE))
                     .wrap(Wrap { trim: true });
-                let vertical_margin = {
-                    let height = chunks[1].height;
-                    if height % 2 == 1 {
-                        (height-1)/2
-                    } else {
-                        if height != 0 {
-                            (height/2)-1
-                        } else {
-                            0_u16
-                        }
-                    }
-                };
-                frame.render_widget(paragraph, chunks[1].inner(&Margin {vertical: vertical_margin, horizontal: 0}))
+                frame.render_widget(paragraph, chunks[1].inner(&Margin {vertical: 1, horizontal: 1}))
             },
             Mode::Chat => {
                 let chunks = Layout::default()
@@ -228,7 +251,6 @@ impl Application {
                         .style(Style::default().fg(JANUARY_BLUE))
                     );
                 frame.render_widget(input_paragraph, chunks[2]);
-
                 
                 let mut lines = Vec::new();
                 self.conversations[self.conversation_index].get_past_conversations_str().iter().for_each(|chunk| {
@@ -245,8 +267,8 @@ impl Application {
                 let scrollbar = Scrollbar::default()
                     .orientation(ScrollbarOrientation::VerticalRight)
                     .symbols(scrollbar::VERTICAL)
-                    .begin_symbol(None)
-                    .end_symbol(None);
+                    .begin_symbol(Some("﹅"))
+                    .end_symbol(Some("﹅"));
 
                 let output_paragraph = Paragraph::new(lines)
                     .scroll((self.scroll, 0))
@@ -261,7 +283,9 @@ impl Application {
                 frame.render_widget(output_paragraph, chunks[1]);
                 frame.render_stateful_widget(scrollbar, chunks[1], &mut self.scroll_state)
             },
-            Mode::Settings => {},
+            Mode::Settings => {
+
+            },
             Mode::Exit => {
                 let text = Line::from(vec![
                     Span::styled("Press '", Style::default()),
