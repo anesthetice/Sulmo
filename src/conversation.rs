@@ -48,6 +48,7 @@ impl Conversation {
 
             let child_stdout = child.stdout.take().unwrap();
             self.child = Some((child, child_stdout));
+            if !self.pro_chunk.raw_input.is_empty() {self.past_chunks.push(self.pro_chunk.clone())};
             self.pro_chunk = self.usr_chunk.clone();
             self.usr_chunk.clear();
             self.stripped = false;
@@ -71,8 +72,11 @@ impl Conversation {
             }
         }
     }
-    pub fn get_input(&self) -> &str {
+    pub fn get_usr_input(&self) -> &str {
         self.usr_chunk.raw_input.as_str()
+    }
+    pub fn get_pro_input(&self) -> &str {
+        self.pro_chunk.raw_input.as_str()
     }
     pub fn pop_back_input(&mut self) {
         if !self.usr_chunk.raw_input.is_empty() {
@@ -82,7 +86,7 @@ impl Conversation {
             }
         }
     }
-    pub fn get_output(&self) -> &str {
+    pub fn get_pro_output(&self) -> &str {
         self.pro_chunk.output.as_str()
     }
     pub fn push_char(&mut self, chr: char) {
@@ -100,6 +104,14 @@ impl Conversation {
             vector.push((chunk.raw_input.as_str(), chunk.output.as_str()));
         });
         vector
+    }
+    pub fn pop_front(&mut self) {
+        self.child = None;
+        if self.pro_chunk.is_empty() {
+            self.past_chunks.pop();
+        } else {
+            self.pro_chunk.clear();
+        }
     }
 }
 
@@ -126,5 +138,8 @@ impl ConversationChunk {
         self.input.clear();
         self.raw_input.clear();
         self.output.clear();
+    }
+    fn is_empty(&self) -> bool {
+        self.raw_input.is_empty() || self.output.is_empty()
     }
 }

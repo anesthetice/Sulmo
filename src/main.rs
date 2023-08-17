@@ -6,7 +6,7 @@ use ratatui::{
     prelude::{CrosstermBackend, Backend, Layout, Direction, Constraint, Alignment, Margin},
     Terminal,
     Frame,
-    widgets::{Block, Borders, Paragraph, Tabs, Wrap},
+    widgets::{Block, Borders, Paragraph, Tabs, Wrap, Padding},
     style::{Style, Color, Modifier},
     text::{Span, Line}
 };
@@ -142,14 +142,14 @@ impl Application {
                             },
                             KeyCode::Delete => {
                                 if self.mode == Mode::Chat {
-                                    self.conversations[self.conversation_index].clear_output();
+                                    self.conversations[self.conversation_index].pop_front();
                                 }
                             },
                             KeyCode::Insert => {
                                 let rctx = ClipboardContext::new();
                                 if rctx.is_ok() {
                                     let mut ctx: ClipboardContext = rctx.unwrap();
-                                    ctx.set_contents(self.conversations[self.conversation_index].get_output().to_string());
+                                    ctx.set_contents(self.conversations[self.conversation_index].get_pro_output().to_string());
                                 }
                             }
                             _ => (),
@@ -206,9 +206,9 @@ impl Application {
                 .constraints([Constraint::Length(3), Constraint::Min(0), Constraint::Length(3)])
                 .split(frame.size());
 
-                let input_line = Line::from(self.conversations[self.conversation_index].get_input());
+                let input_line = Line::from(self.conversations[self.conversation_index].get_usr_input());
                 let input_paragraph = Paragraph::new(input_line)
-                    .alignment(Alignment::Left)
+                    .alignment(Alignment::Center)
                     .style(Style::default().fg(JANUARY_BLUE))
                     .block(Block::new()
                         .borders(Borders::all())
@@ -218,16 +218,23 @@ impl Application {
                 frame.render_widget(input_paragraph, chunks[2]);
 
                 
-                let output_line = Line::from(self.conversations[self.conversation_index].get_output());
-                let output_paragraph = Paragraph::new(output_line)
+                let mut lines = Vec::new();
+                self.conversations[self.conversation_index].get_past_conversations_str().iter().for_each(|chunk| {
+                    lines.push(Line::styled(chunk.0, Style::default().fg(JANUARY_BLUE)).alignment(Alignment::Right));
+                    lines.push(Line::styled(chunk.1, Style::default().fg(VIVID_MALACHITE)).alignment(Alignment::Left));
+                });
+                if !self.conversations[self.conversation_index].get_pro_input().is_empty() {lines.push(Line::styled(self.conversations[self.conversation_index].get_pro_input(), Style::default().fg(JANUARY_BLUE).add_modifier(Modifier::BOLD)).alignment(Alignment::Right))};
+                if !self.conversations[self.conversation_index].get_pro_output().is_empty() {lines.push(Line::styled(self.conversations[self.conversation_index].get_pro_output(), Style::default().fg(VIVID_MALACHITE).add_modifier(Modifier::BOLD)).alignment(Alignment::Left))};
+                let output_paragraph = Paragraph::new(lines)
                     .alignment(Alignment::Center)
-                    .style(Style::default().fg(JANUARY_BLUE))
                     .block(Block::new()
+                        .padding(Padding::new(4, 4, 1, 1))
                         .borders(Borders::all())
                         .border_type(ratatui::widgets::BorderType::Rounded)
                         .style(Style::default().fg(JANUARY_BLUE))
                     )
-                    .wrap(Wrap {trim: true});
+                .wrap(Wrap {trim: true});
+
                 frame.render_widget(output_paragraph, chunks[1]);
             },
             Mode::Settings => {},
