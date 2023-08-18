@@ -1,6 +1,7 @@
 use std::{
     fs,
     io::{Read, Write},
+    path::Path,
 };
 use serde::{Serialize, Deserialize};
 use serde_json::{
@@ -30,7 +31,7 @@ impl Default for AppConfig {
 }
 
 impl AppConfig {
-    const FILEPATH: &'static str = "./sulmo.conf";
+    const FILEPATH: &'static str = "./configs/sulmo.conf";
     fn to_pretty_json(&self) -> String {
         serde_json::to_string_pretty(self).unwrap()
     }
@@ -42,7 +43,7 @@ impl AppConfig {
     pub fn save(&self) -> std::io::Result<()> {
         let mut file = fs::OpenOptions::new().create(true).write(true).truncate(true).open(Self::FILEPATH)?;
         file.write_all(self.to_pretty_json().as_bytes())?;
-        return Ok(());
+        Ok(())
     }
 }
 
@@ -95,7 +96,7 @@ impl Default for LlamaConfig {
 }
 
 impl LlamaConfig {
-    const FILEPATH: &'static str = "./llama.conf";
+    pub const DEFAULT_FILEPATH: &'static str = "./configs/llama.conf";
 
     pub fn to_args(&self) -> Vec<String> {
         let mut arguments: Vec<String> = Vec::new();
@@ -116,15 +117,18 @@ impl LlamaConfig {
     fn to_pretty_json(&self) -> String {
         serde_json::to_string_pretty(self).unwrap()
     }
-    pub fn from_file() -> Option<Self> {
-        let mut file = fs::OpenOptions::new().read(true).open(Self::FILEPATH).ok()?;
-        let mut buffer: Vec<u8> = Vec::new(); file.read_to_end(&mut buffer);
+    pub fn default_from_file() -> Option<Self> {
+        Self::from_file(Self::DEFAULT_FILEPATH)
+    }
+    pub fn from_file<P: AsRef<Path>>(filepath: P) -> Option<Self> {
+        let mut file = fs::OpenOptions::new().read(true).open(filepath).ok()?;
+        let mut buffer: Vec<u8> = Vec::new(); file.read_to_end(&mut buffer).ok()?;
         serde_json::from_slice::<Self>(&buffer).ok()
     }
-    pub fn save(&self) -> std::io::Result<()> {
-        let mut file = fs::OpenOptions::new().create(true).write(true).truncate(true).open(Self::FILEPATH)?;
+    pub fn save<P: AsRef<Path>>(&self, filepath: P) -> std::io::Result<()> {
+        let mut file = fs::OpenOptions::new().create(true).write(true).truncate(true).open(filepath)?;
         file.write_all(self.to_pretty_json().as_bytes())?;
-        return Ok(());
+        Ok(())
     }
     pub fn to_prompt(&self, prompt: &str) -> String {
         format!("{}{}{}", self.before_prompt, prompt, self.after_prompt)

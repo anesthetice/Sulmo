@@ -22,8 +22,8 @@ use clipboard::{
 
 mod setup;
 use setup::{
-    load_ggml_models,
-    load_llama_configuration,
+    load_ggml_models_with_config,
+    load_default_llama_configuration,
     load_app_configuration,
 };
 mod configs;
@@ -77,6 +77,7 @@ struct Application {
     conversation_index: usize,
     scroll: u16,
     scroll_state: ScrollbarState,
+    max_scroll: u16,
 }
 
 impl Application {
@@ -89,7 +90,8 @@ impl Application {
             conversations: ggml_models.into_iter().map(|model| {Conversation::new(model)}).collect(),
             conversation_index: 0,
             scroll: 0,
-            scroll_state: ScrollbarState::default()
+            scroll_state: ScrollbarState::default(),
+            max_scroll: 0,
         }
     }
     pub fn run<B: Backend>(mut self, terminal: &mut Terminal<B>) -> io::Result<()>{
@@ -99,8 +101,8 @@ impl Application {
             terminal.draw(|frame| {self.ui(frame)})?;
 
             let timeout = tick_rate
-            .checked_sub(last_tick.elapsed())
-            .unwrap_or_else(|| Duration::from_secs(0));
+                .checked_sub(last_tick.elapsed())
+                .unwrap_or_else(|| Duration::from_secs(0));
             
             if event::poll(Duration::from_millis(10)).unwrap() {
                 if let Event::Key(key) = event::read()? {
@@ -262,7 +264,8 @@ impl Application {
                 if !self.conversations[self.conversation_index].get_pro_input().is_empty() {lines.push(Line::styled(self.conversations[self.conversation_index].get_pro_input(), Style::default().fg(JANUARY_BLUE).add_modifier(Modifier::BOLD)).alignment(Alignment::Right)); lines.push(Line::from(""))};
                 if !self.conversations[self.conversation_index].get_pro_output().is_empty() {lines.push(Line::styled(self.conversations[self.conversation_index].get_pro_output(), Style::default().fg(VIVID_MALACHITE).add_modifier(Modifier::BOLD)).alignment(Alignment::Left))};
                 
-                self.scroll_state = self.scroll_state.content_length(lines.len() as u16);
+                self.max_scroll = lines.len() as u16;
+                self.scroll_state = self.scroll_state.content_length(self.max_scroll);
 
                 let scrollbar = Scrollbar::default()
                     .orientation(ScrollbarOrientation::VerticalRight)
@@ -321,12 +324,12 @@ impl Application {
 
 fn main() {
     // setup
-    println!("         Loading configurations...");
+    println!("         Loading default configurations...");
     let app_config: AppConfig = load_app_configuration();
-    let llama_config: LlamaConfig = load_llama_configuration();
-    println!("         Loading ggml models...");
-    let ggml_models: Vec<PathBuf> =  load_ggml_models();
-    println!("         Setup complete, entering text user interface...\n\n\n");
+    let default_llama_config: LlamaConfig = load_default_llama_configuration();
+    println!("         Loading ggml models and their configurations...");
+    let ggml_models_config: Vec<(PathBuf, LlamaConfig)> =  load_ggml_models_with_config(&default_llama_config);
+    println!("         Setup complete, entering terminal user interface...\n\n\n");
     sleep(0.1);
 
     // text-user-interface
@@ -336,9 +339,9 @@ fn main() {
     let backend = CrosstermBackend::new(stdout);
     let mut terminal = Terminal::new(backend).unwrap();
 
-    let application: Application = Application::new(app_config, llama_config, ggml_models);
+    //let application: Application = Application::new(app_config, llama_config, ggml_models);
 
-    application.run(&mut terminal);
+    //application.run(&mut terminal);
 
     execute!(terminal.backend_mut(), LeaveAlternateScreen);
     disable_raw_mode();
@@ -380,27 +383,3 @@ impl Application {
         }
     }
 }
-
-/*    
-
-.block(Block::new()
-                .title(" Sulmo 0.0.1 ")
-                .borders(Borders::all())
-                .border_type(ratatui::widgets::BorderType::Rounded)
-                .title_alignment(Alignment::Center)
-                .style(Style::default().fg(JANUARY_BLUE))
-            );
-
-    while child.try_wait().unwrap().is_none() {
-        match child_stdout.read(&mut buffer) {
-            Ok(0) => break,
-            Ok(n) => {
-                let chunk = String::from_utf8_lossy(&buffer[..n]);
-                output_string.push_str(&chunk);
-            }
-            Err(error) => panic!("{}", error),
-        };
-        stdout().write_all(output_string.as_bytes()); stdout().flush(); output_string.clear();
-        thread::sleep(std::time::Duration::from_secs(1));
-    }
-    */
