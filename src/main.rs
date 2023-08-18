@@ -70,7 +70,6 @@ impl Mode {
 
 struct Application {
     app_config: AppConfig,
-    llama_config: LlamaConfig,
     mode: Mode,
     mode_index: usize,
     conversations: Vec<Conversation>,
@@ -81,13 +80,12 @@ struct Application {
 }
 
 impl Application {
-    pub fn new(app_config: AppConfig, llama_config: LlamaConfig, ggml_models: Vec<PathBuf>) -> Self {
+    pub fn new(app_config: AppConfig, ggml_models_with_config: Vec<(PathBuf, LlamaConfig)>) -> Self {
         Self {
             app_config: app_config,
-            llama_config: llama_config,
             mode: Mode::Home,
             mode_index: 0,
-            conversations: ggml_models.into_iter().map(|model| {Conversation::new(model)}).collect(),
+            conversations: ggml_models_with_config.into_iter().map(|unit| {Conversation::new(unit.0, unit.1)}).collect(),
             conversation_index: 0,
             scroll: 0,
             scroll_state: ScrollbarState::default(),
@@ -138,7 +136,7 @@ impl Application {
                                 if self.mode == Mode::Exit {
                                     return Ok(());
                                 } else if self.mode == Mode::Chat {
-                                    self.conversations[self.conversation_index].run(&self.llama_config, &self.app_config);
+                                    self.conversations[self.conversation_index].run();
                                 }
                             },
                             KeyCode::End => {
@@ -318,7 +316,7 @@ impl Application {
         }
     }
     fn on_tick(&mut self) {
-        self.conversations.iter_mut().for_each(|conv| {conv.check()});
+        self.conversations.iter_mut().for_each(|conv| {conv.check(&self.app_config)});
     }
 }
 
@@ -339,9 +337,9 @@ fn main() {
     let backend = CrosstermBackend::new(stdout);
     let mut terminal = Terminal::new(backend).unwrap();
 
-    //let application: Application = Application::new(app_config, llama_config, ggml_models);
+    let application: Application = Application::new(app_config, ggml_models_config);
 
-    //application.run(&mut terminal);
+    application.run(&mut terminal);
 
     execute!(terminal.backend_mut(), LeaveAlternateScreen);
     disable_raw_mode();

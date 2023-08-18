@@ -9,6 +9,7 @@ use crate::configs::{LlamaConfig, AppConfig};
 pub struct Conversation {
     pub model: PathBuf,
     // the conversation chunk that the user can modify
+    pub config: LlamaConfig,
     usr_chunk: ConversationChunk,
     // the conversation chunk that may be being processed
     pro_chunk: ConversationChunk,
@@ -19,9 +20,10 @@ pub struct Conversation {
 }
 
 impl Conversation {
-    pub fn new(model: PathBuf) -> Self {
+    pub fn new(model: PathBuf, config: LlamaConfig) -> Self {
         Self {
             model: model,
+            config: config,
             usr_chunk: ConversationChunk::new(),
             pro_chunk: ConversationChunk::new(),
             past_chunks: Vec::new(),
@@ -30,11 +32,11 @@ impl Conversation {
             child: None,
         }
     }
-    pub fn run(&mut self, llama_config: &LlamaConfig, app_config: &AppConfig) {
+    pub fn run(&mut self) {
         if self.child.is_none() {
-            let mut args: Vec<String> = llama_config.to_args();
+            let mut args: Vec<String> = self.config.to_args();
 
-            self.usr_chunk.input = llama_config.to_prompt(&self.usr_chunk.raw_input);
+            self.usr_chunk.input = self.config.to_prompt(&self.usr_chunk.raw_input);
             args.push("--model".to_string()); args.push(self.model.to_str().unwrap().to_string());
             args.push("--prompt".to_string()); args.push(self.usr_chunk.input.clone());
 
@@ -54,7 +56,8 @@ impl Conversation {
             self.stripped = false;
         }
     }
-    pub fn check(&mut self) {
+    pub fn check(&mut self, app_config: &AppConfig) {
+        // TODO : ADD TIMEOUT
         if let Some(child) = self.child.as_mut() {
             match child.1.read(&mut self.buffer) {
                 Ok(0) => self.child = None,
