@@ -19,8 +19,9 @@ pub fn load_ggml_models_with_config(default_config: &LlamaConfig) -> Vec<(PathBu
                         if valid_entry.to_str().is_some_and(|string| {string.ends_with(".bin")}) {
                             println!("         Found \"{}\".", valid_entry.file_name().unwrap_or("?".as_ref()).to_str().unwrap_or("?"));
                             let mut valid_entry_config = PathBuf::from("./configs");
-                            valid_entry.set_extension("conf");
-                            valid_entry_config.extend([valid_entry.file_name().unwrap_or("?".as_ref())]);
+                            let mut valid_entry_clone = valid_entry.clone(); valid_entry_clone.set_extension("conf");
+                            valid_entry_config.extend([valid_entry_clone.file_name().unwrap_or("?".as_ref())]);
+                            drop(valid_entry_clone);
                             match LlamaConfig::from_file(&valid_entry_config) {
                                 Some(config) => {
                                     println!("         -> linked with the associated config file");
