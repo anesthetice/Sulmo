@@ -1,10 +1,10 @@
+use crate::configs::{AppConfig, LlamaConfig};
 use std::{
-    process::{Command, Stdio, Child, ChildStdout},
     io::Read,
-    path::PathBuf, vec,
+    path::PathBuf,
+    process::{Child, ChildStdout, Command, Stdio},
 };
 use unicode_segmentation::UnicodeSegmentation;
-use crate::configs::{LlamaConfig, AppConfig};
 
 pub struct Conversation {
     pub model: PathBuf,
@@ -15,15 +15,15 @@ pub struct Conversation {
     pro_chunk: ConversationChunk,
     past_chunks: Vec<ConversationChunk>,
     stripped: bool,
-    buffer:  [u8; 2048],
+    buffer: [u8; 2048],
     child: Option<(Child, ChildStdout)>,
 }
 
 impl Conversation {
     pub fn new(model: PathBuf, config: LlamaConfig) -> Self {
         Self {
-            model: model,
-            config: config,
+            model,
+            config,
             usr_chunk: ConversationChunk::new(),
             pro_chunk: ConversationChunk::new(),
             past_chunks: Vec::new(),
@@ -37,8 +37,10 @@ impl Conversation {
             let mut args: Vec<String> = self.config.to_args();
 
             self.usr_chunk.input = self.config.to_prompt(&self.usr_chunk.raw_input);
-            args.push("--model".to_string()); args.push(self.model.to_str().unwrap().to_string());
-            args.push("--prompt".to_string()); args.push(self.usr_chunk.input.clone());
+            args.push("--model".to_string());
+            args.push(self.model.to_str().unwrap().to_string());
+            args.push("--prompt".to_string());
+            args.push(self.usr_chunk.input.clone());
 
             let mut child = Command::new("llama-cpp/main")
                 .args(args)
@@ -50,7 +52,9 @@ impl Conversation {
 
             let child_stdout = child.stdout.take().unwrap();
             self.child = Some((child, child_stdout));
-            if !self.pro_chunk.raw_input.is_empty() {self.past_chunks.push(self.pro_chunk.clone())};
+            if !self.pro_chunk.raw_input.is_empty() {
+                self.past_chunks.push(self.pro_chunk.clone())
+            };
             self.pro_chunk = self.usr_chunk.clone();
             self.usr_chunk.clear();
             self.stripped = false;
@@ -68,9 +72,9 @@ impl Conversation {
                     if !self.stripped && self.pro_chunk.output.len() >= self.pro_chunk.input.len() {
                         let index = self.pro_chunk.input.len();
                         self.pro_chunk.output = self.pro_chunk.output[index..].to_string();
-                        self.stripped=true;
+                        self.stripped = true;
                     }
-                },
+                }
                 Err(error) => panic!("{}", error),
             }
         }
@@ -83,9 +87,13 @@ impl Conversation {
     }
     pub fn pop_back_input(&mut self) {
         if !self.usr_chunk.raw_input.is_empty() {
-            match self.usr_chunk.raw_input.graphemes(true).last() {
-                Some(cluster) => {self.usr_chunk.raw_input = self.usr_chunk.raw_input.strip_suffix(cluster).unwrap().to_string()},
-                None => (),
+            if let Some(cluster) = self.usr_chunk.raw_input.graphemes(true).last() {
+                self.usr_chunk.raw_input = self
+                    .usr_chunk
+                    .raw_input
+                    .strip_suffix(cluster)
+                    .unwrap()
+                    .to_string()
             }
         }
     }
@@ -118,7 +126,6 @@ impl Conversation {
     }
 }
 
-
 #[derive(Clone)]
 struct ConversationChunk {
     // the input after processing
@@ -133,7 +140,7 @@ impl ConversationChunk {
     fn new() -> Self {
         Self {
             input: String::new(),
-            raw_input: String::new(), 
+            raw_input: String::new(),
             output: String::new(),
         }
     }
