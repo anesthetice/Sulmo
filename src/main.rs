@@ -43,16 +43,6 @@ enum Mode {
 }
 
 impl Mode {
-    pub const NUMBER_OF_MODES: usize = 3;
-    pub fn from_usize(number: usize) -> Self {
-        match number {
-            0 => Self::Home,
-            1 => Self::Chat,
-            2 => Self::Settings,
-            3 => Self::Exit,
-            _ => Self::Home,
-        }
-    }
     pub fn to_usize(&self) -> usize {
         match self {
             Self::Home => 0,

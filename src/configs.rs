@@ -81,6 +81,9 @@ pub struct LlamaConfig {
 
     // should the text that is added before and after a prompt be displayed
     pub ba_displayed: bool,
+
+    // anything extra (i.e. --tfs 0.95)
+    other: String,
 }
 
 impl Default for LlamaConfig {
@@ -95,6 +98,7 @@ impl Default for LlamaConfig {
             before_prompt: String::from("###Instruction: "),
             after_prompt: String::from(" ###Response: "),
             ba_displayed: false,
+            other: String::from(""),
         }
     }
 }
@@ -103,15 +107,19 @@ impl LlamaConfig {
     pub const DEFAULT_FILEPATH: &'static str = "./configs/llama.conf";
 
     pub fn to_args(&self) -> Vec<String> {
-        vec![
+        let mut args = vec![
             "--n-predict".to_string(), self.tokens_to_predict.to_string(),
             "--threads".to_string(), self.threads_used.to_string(),
             "--n-gpu-layers".to_string(), self.layers_offloaded_to_gpu.to_string(),
             "--ctx-size".to_string(), self.prompt_context_size.to_string(),
             "--temp".to_string(), self.randomness.to_string(),
             "--repeat-penalty".to_string(), self.repeat_penalty.to_string(),
-        ]
-    }
+        ];
+        if !self.other.is_empty() {
+            self.other.split(" ").into_iter().for_each(|slice| {args.push(slice.to_string())});
+        }
+        args
+    }   
     fn to_pretty_json(&self) -> String {
         serde_json::to_string_pretty(self).unwrap()
     }

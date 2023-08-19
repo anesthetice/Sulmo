@@ -3,6 +3,7 @@ use std::{
     io::Read,
     path::PathBuf,
     process::{Child, ChildStdout, Command, Stdio},
+    time::{Instant, Duration},
 };
 use unicode_segmentation::UnicodeSegmentation;
 
@@ -16,7 +17,7 @@ pub struct Conversation {
     past_chunks: Vec<ConversationChunk>,
     stripped: bool,
     buffer: [u8; 2048],
-    child: Option<(Child, ChildStdout)>,
+    child: Option<(Child, ChildStdout, Instant)>,
 }
 
 impl Conversation {
@@ -51,7 +52,7 @@ impl Conversation {
                 .expect("failed to execute llama-cpp/main");
 
             let child_stdout = child.stdout.take().unwrap();
-            self.child = Some((child, child_stdout));
+            self.child = Some((child, child_stdout, Instant::now()));
             if !self.pro_chunk.raw_input.is_empty() {
                 self.past_chunks.push(self.pro_chunk.clone())
             };
@@ -60,9 +61,12 @@ impl Conversation {
             self.stripped = false;
         }
     }
-    pub fn check(&mut self, app_config: &AppConfig) {
-        // TODO : ADD TIMEOUT
+    pub fn check(&mut self, app_config: &AppConfig) -> () {
         if let Some(child) = self.child.as_mut() {
+            if child.2.elapsed() > Duration::from_secs_f64(app_config.timeout) {
+                self.child = None;
+                return;
+            }
             match child.1.read(&mut self.buffer) {
                 Ok(0) => self.child = None,
                 Ok(n) => {
