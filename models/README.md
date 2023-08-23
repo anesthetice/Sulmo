@@ -1,3 +1,3 @@
 ### ./models
 
-GGML models are stored here
+GGML models should be stored in this directory

@@ -1,7 +1,16 @@
 ### Sulmo - llama.cpp tui written in rust
 
+A pretty barebones terminal user interface for prompting GGML models using llama.cpp
+
+built in rust using ratatui
+
 #### installation
-1. clone this repository
-2. run "cargo build --release" in your terminal
-3. install llama.cpp and rename it to llama-cpp
-(cargo must be installed, and you can run the ./llama-install script on linux to download and install llama.cpp)
+
+#### for linux (from source)
+1. clone this repository, and open a terminal in the directory
+2. execute the "llama-install.sh" script
+
+#### for windows (from source)
+1. clone this repository, and open a terminal in the directory
+2. build the application by running "cargo build --release" in your terminal
+3. download and build llama.cpp inside the directory (https://github.com/ggerganov/llama.cpp)
