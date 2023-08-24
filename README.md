@@ -1,6 +1,6 @@
 ### Sulmo - llama.cpp tui written in rust
 
-A pretty barebones terminal user interface for prompting GGML models using llama.cpp
+A pretty barebones terminal user interface for prompting GGUF models using llama.cpp
 
 built in rust using ratatui
 

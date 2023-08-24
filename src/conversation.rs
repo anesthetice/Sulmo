@@ -3,7 +3,7 @@ use std::{
     io::Read,
     path::PathBuf,
     process::{Child, ChildStdout, Command, Stdio},
-    time::{Instant, Duration},
+    time::{Duration, Instant},
 };
 use unicode_segmentation::UnicodeSegmentation;
 
@@ -61,7 +61,7 @@ impl Conversation {
             self.stripped = false;
         }
     }
-    pub fn check(&mut self, app_config: &AppConfig) -> () {
+    pub fn check(&mut self, app_config: &AppConfig) {
         if let Some(child) = self.child.as_mut() {
             if child.2.elapsed() > Duration::from_secs_f64(app_config.timeout) {
                 self.child = None;

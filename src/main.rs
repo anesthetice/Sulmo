@@ -22,7 +22,7 @@ use std::{
 
 mod setup;
 use setup::{
-    load_app_configuration, load_default_llama_configuration, load_ggml_models_with_config,
+    load_app_configuration, load_default_llama_configuration, load_gguf_models_with_config,
 };
 mod configs;
 use configs::{AppConfig, LlamaConfig};
@@ -30,6 +30,8 @@ mod utils;
 use utils::{pathbuf_to_string, sleep};
 mod conversation;
 use conversation::Conversation;
+
+use crate::setup::check_llama_cpp;
 
 const JANUARY_BLUE: Color = Color::Rgb(0, 161, 185);
 const VIVID_MALACHITE: Color = Color::Rgb(0, 185, 24);
@@ -67,13 +69,13 @@ struct Application {
 impl Application {
     pub fn new(
         app_config: AppConfig,
-        ggml_models_with_config: Vec<(PathBuf, LlamaConfig)>,
+        gguf_models_with_config: Vec<(PathBuf, LlamaConfig)>,
     ) -> Self {
         Self {
             app_config,
             mode: Mode::Home,
             mode_index: 0,
-            conversations: ggml_models_with_config
+            conversations: gguf_models_with_config
                 .into_iter()
                 .map(|unit| Conversation::new(unit.0, unit.1))
                 .collect(),
@@ -138,7 +140,7 @@ impl Application {
                             }
                             KeyCode::Insert => {
                                 let rctx = ClipboardContext::new();
-                                if let Ok(mut ctx) = rctx {;
+                                if let Ok(mut ctx) = rctx {
                                     let _ = ctx.set_contents(
                                         self.conversations[self.conversation_index]
                                             .get_pro_output()
@@ -185,7 +187,7 @@ impl Application {
         .select(self.mode_index)
         .block(
             Block::new()
-                .title(" Sulmo 0.0.1 ")
+                .title(" Sulmo 1.0.0 ")
                 .borders(Borders::all())
                 .border_type(ratatui::widgets::BorderType::Rounded)
                 .title_alignment(Alignment::Right)
@@ -197,7 +199,7 @@ impl Application {
                 let mut text = Vec::new();
                 let blank_line = Line::from("");
 
-                let intro_line = Line::from("Welcome to Sulmo, a terminal user interface designed to prompt llama.cpp compatible ggml models in your terminal.");
+                let intro_line = Line::from("Welcome to Sulmo, a terminal user interface designed to prompt llama.cpp compatible gguf models in your terminal.");
                 text.push(intro_line);
                 text.push(blank_line.clone());
                 let tab_line = Line::from(vec![
@@ -340,7 +342,45 @@ impl Application {
                 frame.render_widget(output_paragraph, chunks[1]);
                 frame.render_stateful_widget(scrollbar, chunks[1], &mut self.scroll_state)
             }
-            Mode::Settings => {}
+            Mode::Settings => {
+                let mut text = Vec::new();
+                let blank_line = Line::from("");
+
+                text.push(Line::from(Span::styled(
+                    "    App configuration",
+                    Style::default()
+                        .fg(VIVID_MALACHITE)
+                        .add_modifier(Modifier::BOLD),
+                )));
+                self.app_config
+                    .to_print()
+                    .into_iter()
+                    .for_each(|string| text.push(Line::from(string).alignment(Alignment::Left)));
+                text.push(blank_line);
+                text.push(Line::from(Span::styled(
+                    "    Llama configuration",
+                    Style::default()
+                        .fg(VIVID_MALACHITE)
+                        .add_modifier(Modifier::BOLD),
+                )));
+                self.conversations[self.conversation_index]
+                    .config
+                    .to_print()
+                    .into_iter()
+                    .for_each(|string| text.push(Line::from(string).alignment(Alignment::Left)));
+
+                let paragraph = Paragraph::new(text)
+                    .block(
+                        Block::new()
+                            .padding(Padding::new(4, 4, 1, 1))
+                            .borders(Borders::all())
+                            .border_type(ratatui::widgets::BorderType::Rounded)
+                            .style(Style::default().fg(JANUARY_BLUE)),
+                    )
+                    .wrap(Wrap { trim: true });
+
+                frame.render_widget(paragraph, chunks[1])
+            }
             Mode::Exit => {
                 let text = Line::from(vec![
                     Span::styled("Press '", Style::default()),
@@ -382,28 +422,30 @@ impl Application {
 
 fn main() {
     // setup
+    println!("\n         Checking llama-cpp installation...");
+    check_llama_cpp();
     println!("         Loading default configurations...");
     let app_config: AppConfig = load_app_configuration();
     let default_llama_config: LlamaConfig = load_default_llama_configuration();
-    println!("         Loading ggml models and their configurations...");
-    let ggml_models_config: Vec<(PathBuf, LlamaConfig)> =
-        load_ggml_models_with_config(&default_llama_config);
+    println!("         Loading gguf models and their configurations...");
+    let gguf_models_config: Vec<(PathBuf, LlamaConfig)> =
+        load_gguf_models_with_config(&default_llama_config);
     println!("         Setup complete, entering terminal user interface...\n\n\n");
     sleep(0.1);
 
     // text-user-interface
     let mut stdout = stdout();
     enable_raw_mode().unwrap();
-    execute!(stdout, EnterAlternateScreen);
+    let _ = execute!(stdout, EnterAlternateScreen);
     let backend = CrosstermBackend::new(stdout);
     let mut terminal = Terminal::new(backend).unwrap();
 
-    let application: Application = Application::new(app_config, ggml_models_config);
+    let application: Application = Application::new(app_config, gguf_models_config);
 
-    application.run(&mut terminal);
+    let _ = application.run(&mut terminal);
 
-    execute!(terminal.backend_mut(), LeaveAlternateScreen);
-    disable_raw_mode();
+    let _ = execute!(terminal.backend_mut(), LeaveAlternateScreen);
+    let _ = disable_raw_mode();
 }
 
 impl Application {

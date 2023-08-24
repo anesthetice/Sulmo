@@ -6,52 +6,48 @@ use std::{
 };
 
 /// returns a vector containing the relative paths of the models found in ./models
-pub fn load_ggml_models_with_config(default_config: &LlamaConfig) -> Vec<(PathBuf, LlamaConfig)> {
-    let mut ggml_models_with_config: Vec<(PathBuf, LlamaConfig)> = Vec::new();
+pub fn load_gguf_models_with_config(default_config: &LlamaConfig) -> Vec<(PathBuf, LlamaConfig)> {
+    let mut gguf_models_with_config: Vec<(PathBuf, LlamaConfig)> = Vec::new();
 
     let models_path: PathBuf = PathBuf::from("./models");
     if models_path.is_dir() {
         match read_dir(models_path) {
             Ok(element) => {
-                for entry in element {
-                    if let Ok(valid_entry) = entry {
-                        let valid_entry = valid_entry.path();
-                        if valid_entry
-                            .to_str()
-                            .is_some_and(|string| string.ends_with(".bin"))
-                        {
-                            println!(
-                                "         Found \"{}\".",
-                                valid_entry
-                                    .file_name()
-                                    .unwrap_or("?".as_ref())
-                                    .to_str()
-                                    .unwrap_or("?")
-                            );
-                            let mut valid_entry_config = PathBuf::from("./configs");
-                            let mut valid_entry_clone = valid_entry.clone();
-                            valid_entry_clone.set_extension("conf");
-                            valid_entry_config
-                                .extend([valid_entry_clone.file_name().unwrap_or("?".as_ref())]);
-                            drop(valid_entry_clone);
-                            match LlamaConfig::from_file(&valid_entry_config) {
-                                Some(config) => {
-                                    println!("         -> linked with the associated config file");
-                                    ggml_models_with_config.push((valid_entry, config));
-                                }
-                                None => match default_config.save(&valid_entry_config) {
-                                    Ok(()) => {
-                                        println!("         -> created and saved a new associated default config file");
-                                        ggml_models_with_config
-                                            .push((valid_entry, default_config.clone()));
-                                    }
-                                    Err(error) => {
-                                        println!("         -> created but did not save a new associated default config file, {}", error);
-                                        ggml_models_with_config
-                                            .push((valid_entry, default_config.clone()));
-                                    }
-                                },
+                for entry in element.flatten() {
+                    let entry = entry.path();
+                    if entry
+                        .to_str()
+                        .is_some_and(|string| string.ends_with(".bin"))
+                    {
+                        println!(
+                            "         Found \"{}\".",
+                            entry
+                                .file_name()
+                                .unwrap_or("?".as_ref())
+                                .to_str()
+                                .unwrap_or("?")
+                                .cyan()
+                        );
+                        let mut entry_config = PathBuf::from("./configs");
+                        let mut entry_clone = entry.clone();
+                        entry_clone.set_extension("conf");
+                        entry_config.extend([entry_clone.file_name().unwrap_or("?".as_ref())]);
+                        drop(entry_clone);
+                        match LlamaConfig::from_file(&entry_config) {
+                            Some(config) => {
+                                println!("         -> linked with the associated config file");
+                                gguf_models_with_config.push((entry, config));
                             }
+                            None => match default_config.save(&entry_config) {
+                                Ok(()) => {
+                                    println!("         -> created and saved a new associated default config file");
+                                    gguf_models_with_config.push((entry, default_config.clone()));
+                                }
+                                Err(error) => {
+                                    println!("         -> created but did not save a new associated default config file, {}", error);
+                                    gguf_models_with_config.push((entry, default_config.clone()));
+                                }
+                            },
                         }
                     }
                 }
@@ -78,15 +74,15 @@ pub fn load_ggml_models_with_config(default_config: &LlamaConfig) -> Vec<(PathBu
             }
         }
     }
-    if ggml_models_with_config.is_empty() {
-        println!("[{}] Failed to find a single ggml model.", "FAILED".red())
+    if gguf_models_with_config.is_empty() {
+        println!("[{}] Failed to find a single gguf model.", "FAILED".red())
     } else {
         println!(
-            "[  {}  ] Loaded ggml models with their configurations.",
+            "[  {}  ] Loaded gguf models with their configurations.",
             "OK".green()
         );
     }
-    ggml_models_with_config
+    gguf_models_with_config
 }
 
 pub fn load_default_llama_configuration() -> LlamaConfig {
@@ -151,4 +147,26 @@ pub fn load_app_configuration() -> AppConfig {
     };
     println!("[  {}  ] Loaded sulmo configuration.", "OK".green());
     configuration
+}
+
+pub fn check_llama_cpp() {
+    let normal_path: PathBuf = PathBuf::from("./llama-cpp/main");
+    let alt_path: PathBuf = PathBuf::from("./llama.cpp/main");
+
+    if normal_path.is_file() {
+        println!("[  {}  ] Found ./llama-cpp/main", "OK".green());
+    } else if alt_path.is_file() {
+        match std::fs::rename("./llama.cpp", "./llama-cpp") {
+            Ok(()) => println!(
+                "[  {}  ] Found ./llama.cpp/main and renamed ./llama.cpp to ./llama-cpp",
+                "OK".green()
+            ),
+            Err(error) => {
+                println!("[{}] Found ./llama.cpp/main but failed to rename the folder to ./llama-cpp. => {}", "FAILED".red(), error);
+                panic!("");
+            }
+        }
+    } else {
+        println!("[{}] Failed to find ./llama-cpp/main or ./llama.cpp/main, please carefully read the README", "FAILED".red());
+    }
 }
