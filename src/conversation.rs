@@ -10,8 +10,8 @@ use unicode_segmentation::UnicodeSegmentation;
 
 pub struct Conversation {
     pub model: PathBuf,
-    // the conversation chunk that the user can modify
     pub config: ModelConfig,
+    // the conversation chunk that the user can modify
     usr_chunk: ConversationChunk,
     // the conversation chunk that may be being processed
     pro_chunk: ConversationChunk,
@@ -25,7 +25,6 @@ impl Conversation {
     pub fn new(model: PathBuf, config: ModelConfig) -> Self {
         Self {
             past_chunks: config.get_past_chunks(),
-
             model,
             config,
             usr_chunk: ConversationChunk::new(),

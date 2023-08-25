@@ -14,6 +14,7 @@ use ratatui::{
     },
     Frame, Terminal,
 };
+use sysinfo::{SystemExt, CpuRefreshKind};
 use std::{
     io::{self, stdout},
     path::PathBuf,
@@ -22,16 +23,14 @@ use std::{
 
 mod setup;
 use setup::{
-    load_app_configuration, load_default_llama_configuration, load_gguf_models_with_config,
+    load_app_configuration, load_default_llama_configuration, load_gguf_models_with_config, check_llama_cpp
 };
 mod configs;
 use configs::{AppConfig, ModelConfig};
 mod utils;
-use utils::{pathbuf_to_string, sleep};
+use utils::pathbuf_to_string;
 mod conversation;
 use conversation::Conversation;
-
-use crate::setup::check_llama_cpp;
 
 const JANUARY_BLUE: Color = Color::Rgb(0, 161, 185);
 const VIVID_MALACHITE: Color = Color::Rgb(0, 185, 24);
@@ -203,7 +202,7 @@ impl Application {
         .select(self.mode_index)
         .block(
             Block::new()
-                .title(" Sulmo 1.1.0 ")
+                .title(" Sulmo 1.1.1 ")
                 .borders(Borders::all())
                 .border_type(ratatui::widgets::BorderType::Rounded)
                 .title_alignment(Alignment::Right)
@@ -457,7 +456,7 @@ fn main() {
     let gguf_models_config: Vec<(PathBuf, ModelConfig)> =
         load_gguf_models_with_config(&default_llama_config);
     println!("         Setup complete, entering terminal user interface...\n\n\n");
-    sleep(0.1);
+    std::thread::sleep(std::time::Duration::from_millis(app_config.startup_freeze));
 
     // text-user-interface
     let mut stdout = stdout();

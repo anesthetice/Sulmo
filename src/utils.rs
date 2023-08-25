@@ -1,12 +1,5 @@
-use std::{
-    path::{Path, PathBuf},
-    thread::sleep as tsleep,
-    time::Duration,
-};
+use std::path::{Path, PathBuf};
 
-pub fn sleep(seconds: f64) {
-    tsleep(Duration::from_secs_f64(seconds));
-}
 
 pub fn pathbuf_to_string(pathbuf: &Path, desired_length: usize, error_str: &str) -> String {
     let filestem: &str = pathbuf

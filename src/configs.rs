@@ -1,5 +1,6 @@
 use serde::{Deserialize, Serialize};
 use serde_json::{self};
+use sysinfo::{SystemExt, RefreshKind};
 use std::{
     fs,
     io::{Read, Write},
@@ -13,8 +14,11 @@ pub struct AppConfig {
     // maximum alloted time for a prompt to finish before it's killed
     pub timeout: f64,
 
-    // tick rate in ms (miliseconds) that dictates how quickly how certain aspects of the application are refreshed
+    // tick rate (in ms) that dictates how quickly how certain aspects of the application are refreshed
     pub tick_rate: u64,
+
+    // how much time (in ms) should the TUI startup be delayed by
+    pub startup_freeze: u64,
 }
 
 impl Default for AppConfig {
@@ -22,6 +26,7 @@ impl Default for AppConfig {
         Self {
             timeout: 360.0,
             tick_rate: 200,
+            startup_freeze: 1000,
         }
     }
 }
@@ -96,7 +101,11 @@ impl Default for ModelConfig {
     fn default() -> Self {
         Self {
             tokens_to_predict: -1,
-            threads_used: 12,
+            threads_used: {
+                let mut info = sysinfo::System::new();
+                info.refresh_cpu();
+                (info.physical_core_count().unwrap_or(2_usize) as u8) * 2
+            },
             layers_offloaded_to_gpu: 32,
             prompt_context_size: 2048,
             randomness: 0.75,
