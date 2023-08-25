@@ -25,7 +25,7 @@ use setup::{
     load_app_configuration, load_default_llama_configuration, load_gguf_models_with_config,
 };
 mod configs;
-use configs::{AppConfig, LlamaConfig};
+use configs::{AppConfig, ModelConfig};
 mod utils;
 use utils::{pathbuf_to_string, sleep};
 mod conversation;
@@ -69,7 +69,7 @@ struct Application {
 impl Application {
     pub fn new(
         app_config: AppConfig,
-        gguf_models_with_config: Vec<(PathBuf, LlamaConfig)>,
+        gguf_models_with_config: Vec<(PathBuf, ModelConfig)>,
     ) -> Self {
         Self {
             app_config,
@@ -105,71 +105,75 @@ impl Application {
                                                 .to_string(),
                                         );
                                     }
-                                },
+                                }
                                 KeyCode::Char('v') => {
                                     let rctx = ClipboardContext::new();
                                     if let Ok(mut ctx) = rctx {
                                         if let Ok(string) = ctx.get_contents() {
-                                            self.conversations[self.conversation_index].push_string(&string);
+                                            self.conversations[self.conversation_index]
+                                                .push_string(&string);
                                         }
                                     }
-                                },
+                                }
                                 _ => (),
                             }
-                        } else { match key.code {
-                            KeyCode::Char(chr) => {
-                                if self.mode == Mode::Chat {
-                                    self.conversations[self.conversation_index].push_char(chr);
+                        } else {
+                            match key.code {
+                                KeyCode::Char(chr) => {
+                                    if self.mode == Mode::Chat {
+                                        self.conversations[self.conversation_index].push_char(chr);
+                                    }
                                 }
-                            }
-                            KeyCode::Backspace => {
-                                if self.mode == Mode::Chat {
-                                    self.conversations[self.conversation_index].pop_back_input();
+                                KeyCode::Backspace => {
+                                    if self.mode == Mode::Chat {
+                                        self.conversations[self.conversation_index]
+                                            .pop_back_input();
+                                    }
                                 }
-                            }
-                            KeyCode::Esc => {
-                                return Ok(());
-                            }
-                            KeyCode::Tab => {
-                                self.next_mode();
-                            }
-                            KeyCode::PageUp => {
-                                if self.mode == Mode::Chat {
-                                    self.next_model();
-                                }
-                            }
-                            KeyCode::PageDown => {
-                                if self.mode == Mode::Chat {
-                                    self.prev_model();
-                                }
-                            }
-                            KeyCode::Enter => {
-                                if self.mode == Mode::Exit {
+                                KeyCode::Esc => {
                                     return Ok(());
-                                } else if self.mode == Mode::Chat {
-                                    self.conversations[self.conversation_index].run();
                                 }
-                            }
-                            KeyCode::End => {
-                                if self.mode == Mode::Chat {
-                                    self.conversations[self.conversation_index].reset_child();
+                                KeyCode::Tab => {
+                                    self.next_mode();
                                 }
-                            }
-                            KeyCode::Delete => {
-                                if self.mode == Mode::Chat {
-                                    self.conversations[self.conversation_index].pop_front();
+                                KeyCode::PageUp => {
+                                    if self.mode == Mode::Chat {
+                                        self.next_model();
+                                    }
                                 }
+                                KeyCode::PageDown => {
+                                    if self.mode == Mode::Chat {
+                                        self.prev_model();
+                                    }
+                                }
+                                KeyCode::Enter => {
+                                    if self.mode == Mode::Exit {
+                                        return Ok(());
+                                    } else if self.mode == Mode::Chat {
+                                        self.conversations[self.conversation_index].run();
+                                    }
+                                }
+                                KeyCode::End => {
+                                    if self.mode == Mode::Chat {
+                                        self.conversations[self.conversation_index].reset_child();
+                                    }
+                                }
+                                KeyCode::Delete => {
+                                    if self.mode == Mode::Chat {
+                                        self.conversations[self.conversation_index].pop_front();
+                                    }
+                                }
+                                KeyCode::Up => {
+                                    self.scroll = self.scroll.saturating_sub(1);
+                                    self.scroll_state.prev()
+                                }
+                                KeyCode::Down => {
+                                    self.scroll = self.scroll.saturating_add(1);
+                                    self.scroll_state.next()
+                                }
+                                _ => (),
                             }
-                            KeyCode::Up => {
-                                self.scroll = self.scroll.saturating_sub(1);
-                                self.scroll_state.prev()
-                            }
-                            KeyCode::Down => {
-                                self.scroll = self.scroll.saturating_add(1);
-                                self.scroll_state.next()
-                            }
-                            _ => (),
-                        }}
+                        }
                     }
                 }
             }
@@ -199,7 +203,7 @@ impl Application {
         .select(self.mode_index)
         .block(
             Block::new()
-                .title(" Sulmo 1.0.0 ")
+                .title(" Sulmo 1.1.0 ")
                 .borders(Borders::all())
                 .border_type(ratatui::widgets::BorderType::Rounded)
                 .title_alignment(Alignment::Right)
@@ -249,7 +253,10 @@ impl Application {
                 let paste_line = Line::from(vec![
                     Span::styled("Press '", Style::default()),
                     Span::styled("ctrl + v", Style::default().add_modifier(Modifier::BOLD)),
-                    Span::styled("' to paste the contents of your clipboard.", Style::default()),
+                    Span::styled(
+                        "' to paste the contents of your clipboard.",
+                        Style::default(),
+                    ),
                 ]);
                 text.push(paste_line);
                 text.push(blank_line.clone());
@@ -445,9 +452,9 @@ fn main() {
     check_llama_cpp();
     println!("         Loading default configurations...");
     let app_config: AppConfig = load_app_configuration();
-    let default_llama_config: LlamaConfig = load_default_llama_configuration();
+    let default_llama_config: ModelConfig = load_default_llama_configuration();
     println!("         Loading gguf models and their configurations...");
-    let gguf_models_config: Vec<(PathBuf, LlamaConfig)> =
+    let gguf_models_config: Vec<(PathBuf, ModelConfig)> =
         load_gguf_models_with_config(&default_llama_config);
     println!("         Setup complete, entering terminal user interface...\n\n\n");
     sleep(0.1);

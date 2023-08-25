@@ -1,4 +1,5 @@
-use crate::configs::{AppConfig, LlamaConfig};
+use crate::configs::{AppConfig, ModelConfig};
+use serde::{Deserialize, Serialize};
 use std::{
     io::Read,
     path::PathBuf,
@@ -10,7 +11,7 @@ use unicode_segmentation::UnicodeSegmentation;
 pub struct Conversation {
     pub model: PathBuf,
     // the conversation chunk that the user can modify
-    pub config: LlamaConfig,
+    pub config: ModelConfig,
     usr_chunk: ConversationChunk,
     // the conversation chunk that may be being processed
     pro_chunk: ConversationChunk,
@@ -21,13 +22,14 @@ pub struct Conversation {
 }
 
 impl Conversation {
-    pub fn new(model: PathBuf, config: LlamaConfig) -> Self {
+    pub fn new(model: PathBuf, config: ModelConfig) -> Self {
         Self {
+            past_chunks: config.get_past_chunks(),
+
             model,
             config,
             usr_chunk: ConversationChunk::new(),
             pro_chunk: ConversationChunk::new(),
-            past_chunks: Vec::new(),
             stripped: false,
             buffer: [0; 2048],
             child: None,
@@ -62,13 +64,20 @@ impl Conversation {
         }
     }
     pub fn check(&mut self, app_config: &AppConfig) {
+        self.config.try_update(&self.model, &self.past_chunks);
         if let Some(child) = self.child.as_mut() {
             if child.2.elapsed() > Duration::from_secs_f64(app_config.timeout) {
                 self.child = None;
+                self.past_chunks.push(self.pro_chunk.clone());
+                self.pro_chunk.clear();
                 return;
             }
             match child.1.read(&mut self.buffer) {
-                Ok(0) => self.child = None,
+                Ok(0) => {
+                    self.child = None;
+                    self.past_chunks.push(self.pro_chunk.clone());
+                    self.pro_chunk.clear();
+                }
                 Ok(n) => {
                     let text_chunk = String::from_utf8_lossy(&self.buffer[..n]);
                     self.pro_chunk.output.push_str(&text_chunk);
@@ -110,11 +119,12 @@ impl Conversation {
     pub fn push_string(&mut self, string: &str) {
         self.usr_chunk.raw_input.push_str(string);
     }
-    pub fn clear_output(&mut self) {
-        self.pro_chunk.output.clear();
-    }
     pub fn reset_child(&mut self) {
         self.child = None;
+        if !self.pro_chunk.is_empty() {
+            self.past_chunks.push(self.pro_chunk.clone());
+            self.pro_chunk.clear();
+        }
     }
     pub fn get_past_conversations_str(&self) -> Vec<(&str, &str)> {
         let mut vector: Vec<(&str, &str)> = Vec::new();
@@ -133,8 +143,8 @@ impl Conversation {
     }
 }
 
-#[derive(Clone)]
-struct ConversationChunk {
+#[derive(Clone, Debug, Serialize, Deserialize, PartialEq)]
+pub struct ConversationChunk {
     // the input after processing
     input: String,
     // the input without any processing, what the user typed

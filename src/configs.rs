@@ -3,8 +3,10 @@ use serde_json::{self};
 use std::{
     fs,
     io::{Read, Write},
-    path::Path,
+    path::{Path, PathBuf},
 };
+
+use crate::{conversation::ConversationChunk, utils::pathbuf_helper};
 
 #[derive(Clone, Copy, Debug, Serialize, Deserialize)]
 pub struct AppConfig {
@@ -56,7 +58,7 @@ impl AppConfig {
 }
 
 #[derive(Clone, Debug, Serialize, Deserialize)]
-pub struct LlamaConfig {
+pub struct ModelConfig {
     // -n N, --n-predict N
     tokens_to_predict: i32,
 
@@ -86,9 +88,11 @@ pub struct LlamaConfig {
 
     // anything extra (i.e. --tfs 0.95)
     other: String,
+
+    past_chunks: Vec<ConversationChunk>,
 }
 
-impl Default for LlamaConfig {
+impl Default for ModelConfig {
     fn default() -> Self {
         Self {
             tokens_to_predict: -1,
@@ -101,12 +105,13 @@ impl Default for LlamaConfig {
             prompt_suffix: String::from(" ###Response: "),
             ps_displayed: false,
             other: String::from(""),
+            past_chunks: Vec::new(),
         }
     }
 }
 
-impl LlamaConfig {
-    pub const DEFAULT_FILEPATH: &'static str = "./configs/llama.conf";
+impl ModelConfig {
+    pub const DEFAULT_FILEPATH: &'static str = "./configs/model.conf";
 
     pub fn to_args(&self) -> Vec<String> {
         let mut args = vec![
@@ -179,5 +184,20 @@ impl LlamaConfig {
             format!("prefix/suffix displayed      :    '{}'", self.ps_displayed),
             format!("other arguments              :    '{}'", self.other),
         ]
+    }
+    pub fn try_update<P: AsRef<Path>>(&mut self, model_filepath: P, other: &[ConversationChunk]) {
+        if other != self.past_chunks {
+            self.past_chunks = other.to_vec();
+            if let Some(filepath) = pathbuf_helper(
+                model_filepath.as_ref(),
+                &PathBuf::from("./configs/"),
+                "conf",
+            ) {
+                let _ = self.save(filepath);
+            }
+        }
+    }
+    pub fn get_past_chunks(&self) -> Vec<ConversationChunk> {
+        self.past_chunks.clone()
     }
 }

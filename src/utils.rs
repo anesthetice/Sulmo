@@ -1,4 +1,8 @@
-use std::{path::Path, thread::sleep as tsleep, time::Duration};
+use std::{
+    path::{Path, PathBuf},
+    thread::sleep as tsleep,
+    time::Duration,
+};
 
 pub fn sleep(seconds: f64) {
     tsleep(Duration::from_secs_f64(seconds));
@@ -15,4 +19,14 @@ pub fn pathbuf_to_string(pathbuf: &Path, desired_length: usize, error_str: &str)
     } else {
         String::from(filestem)
     }
+}
+
+pub fn pathbuf_helper(pathbuf: &Path, prefix: &Path, extension: &str) -> Option<PathBuf> {
+    let mut pathbuf_clone = pathbuf.to_owned();
+    if !pathbuf_clone.set_extension(extension) {
+        return None;
+    };
+    Some(PathBuf::from_iter(
+        [prefix.as_os_str(), pathbuf_clone.file_name()?].iter(),
+    ))
 }

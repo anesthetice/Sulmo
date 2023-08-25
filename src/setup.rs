@@ -1,4 +1,4 @@
-use crate::configs::{AppConfig, LlamaConfig};
+use crate::configs::{AppConfig, ModelConfig};
 use crossterm::style::Stylize;
 use std::{
     fs::{create_dir, read_dir},
@@ -6,8 +6,8 @@ use std::{
 };
 
 /// returns a vector containing the relative paths of the models found in ./models
-pub fn load_gguf_models_with_config(default_config: &LlamaConfig) -> Vec<(PathBuf, LlamaConfig)> {
-    let mut gguf_models_with_config: Vec<(PathBuf, LlamaConfig)> = Vec::new();
+pub fn load_gguf_models_with_config(default_config: &ModelConfig) -> Vec<(PathBuf, ModelConfig)> {
+    let mut gguf_models_with_config: Vec<(PathBuf, ModelConfig)> = Vec::new();
 
     let models_path: PathBuf = PathBuf::from("./models");
     if models_path.is_dir() {
@@ -33,7 +33,7 @@ pub fn load_gguf_models_with_config(default_config: &LlamaConfig) -> Vec<(PathBu
                         entry_clone.set_extension("conf");
                         entry_config.extend([entry_clone.file_name().unwrap_or("?".as_ref())]);
                         drop(entry_clone);
-                        match LlamaConfig::from_file(&entry_config) {
+                        match ModelConfig::from_file(&entry_config) {
                             Some(config) => {
                                 println!("         -> linked with the associated config file");
                                 gguf_models_with_config.push((entry, config));
@@ -83,13 +83,13 @@ pub fn load_gguf_models_with_config(default_config: &LlamaConfig) -> Vec<(PathBu
     gguf_models_with_config
 }
 
-pub fn load_default_llama_configuration() -> LlamaConfig {
-    let configuration = match LlamaConfig::default_from_file() {
+pub fn load_default_llama_configuration() -> ModelConfig {
+    let configuration = match ModelConfig::default_from_file() {
         Some(config) => config,
         None => {
             println!("         Failed to load the default llama configuration. Generating new configuration...");
-            let configuration = LlamaConfig::default();
-            match configuration.save(LlamaConfig::DEFAULT_FILEPATH) {
+            let configuration = ModelConfig::default();
+            match configuration.save(ModelConfig::DEFAULT_FILEPATH) {
                 Ok(()) => println!(
                     "[  {}  ] Created and saved a default llama configuration.",
                     "OK".green()
