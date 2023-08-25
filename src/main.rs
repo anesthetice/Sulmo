@@ -1,6 +1,6 @@
 use clipboard::{ClipboardContext, ClipboardProvider};
 use crossterm::{
-    event::{self, Event, KeyCode, KeyEventKind},
+    event::{self, Event, KeyCode, KeyEventKind, KeyModifiers},
     execute,
     terminal::{disable_raw_mode, enable_raw_mode, EnterAlternateScreen, LeaveAlternateScreen},
 };
@@ -94,7 +94,29 @@ impl Application {
             if event::poll(Duration::from_millis(10)).unwrap() {
                 if let Event::Key(key) = event::read()? {
                     if key.kind == KeyEventKind::Press {
-                        match key.code {
+                        if key.modifiers == KeyModifiers::CONTROL {
+                            match key.code {
+                                KeyCode::Char('c') => {
+                                    let rctx = ClipboardContext::new();
+                                    if let Ok(mut ctx) = rctx {
+                                        let _ = ctx.set_contents(
+                                            self.conversations[self.conversation_index]
+                                                .get_pro_output()
+                                                .to_string(),
+                                        );
+                                    }
+                                },
+                                KeyCode::Char('v') => {
+                                    let rctx = ClipboardContext::new();
+                                    if let Ok(mut ctx) = rctx {
+                                        if let Ok(string) = ctx.get_contents() {
+                                            self.conversations[self.conversation_index].push_string(&string);
+                                        }
+                                    }
+                                },
+                                _ => (),
+                            }
+                        } else { match key.code {
                             KeyCode::Char(chr) => {
                                 if self.mode == Mode::Chat {
                                     self.conversations[self.conversation_index].push_char(chr);
@@ -138,16 +160,6 @@ impl Application {
                                     self.conversations[self.conversation_index].pop_front();
                                 }
                             }
-                            KeyCode::Insert => {
-                                let rctx = ClipboardContext::new();
-                                if let Ok(mut ctx) = rctx {
-                                    let _ = ctx.set_contents(
-                                        self.conversations[self.conversation_index]
-                                            .get_pro_output()
-                                            .to_string(),
-                                    );
-                                }
-                            }
                             KeyCode::Up => {
                                 self.scroll = self.scroll.saturating_sub(1);
                                 self.scroll_state.prev()
@@ -157,7 +169,7 @@ impl Application {
                                 self.scroll_state.next()
                             }
                             _ => (),
-                        }
+                        }}
                     }
                 }
             }
@@ -227,15 +239,22 @@ impl Application {
                 ]);
                 text.push(enddel_line);
                 text.push(blank_line.clone());
-                let insert_line = Line::from(vec![
+                let copy_line = Line::from(vec![
                     Span::styled("Press '", Style::default()),
-                    Span::styled("Ins", Style::default().add_modifier(Modifier::BOLD)),
-                    Span::styled("' to copy to your clipboard the latest message generated or being generated.", Style::default()),
+                    Span::styled("ctrl + c", Style::default().add_modifier(Modifier::BOLD)),
+                    Span::styled("' to copy to your clipboard the latest message generated or currently being generated.", Style::default()),
                 ]);
-                text.push(insert_line);
+                text.push(copy_line);
+                text.push(blank_line.clone());
+                let paste_line = Line::from(vec![
+                    Span::styled("Press '", Style::default()),
+                    Span::styled("ctrl + v", Style::default().add_modifier(Modifier::BOLD)),
+                    Span::styled("' to paste the contents of your clipboard.", Style::default()),
+                ]);
+                text.push(paste_line);
                 text.push(blank_line.clone());
                 text.push(Line::from(
-                    "Use the arrow keys to scroll up and down your conversation",
+                    "Use the up and down arrow keys to scroll up and down in chat mode",
                 ));
 
                 let paragraph = Paragraph::new(text)

@@ -53,32 +53,30 @@ pub fn load_gguf_models_with_config(default_config: &LlamaConfig) -> Vec<(PathBu
                 }
             }
             Err(error) => {
-                println!(
+                panic!(
                     "[{}] Failed to read the /models directory. => {}",
                     "FAILED".red(),
                     error
                 );
-                panic!("");
             }
         }
     } else {
         match create_dir("./models") {
             Ok(()) => (),
             Err(error) => {
-                println!(
+                panic!(
                     "[{}] Failed to find and create the /models directory. => {}",
                     "FAILED".red(),
                     error
                 );
-                panic!("");
             }
         }
     }
     if gguf_models_with_config.is_empty() {
-        println!("[{}] Failed to find a single gguf model.", "FAILED".red())
+        panic!("[{}] Failed to find a single GGUF model.", "FAILED".red())
     } else {
         println!(
-            "[  {}  ] Loaded gguf models with their configurations.",
+            "[  {}  ] Loaded GGUF models with their configurations.",
             "OK".green()
         );
     }
@@ -162,11 +160,10 @@ pub fn check_llama_cpp() {
                 "OK".green()
             ),
             Err(error) => {
-                println!("[{}] Found ./llama.cpp/main but failed to rename the folder to ./llama-cpp. => {}", "FAILED".red(), error);
-                panic!("");
+                panic!("[{}] Found ./llama.cpp/main but failed to rename the folder to ./llama-cpp. => {}", "FAILED".red(), error);
             }
         }
     } else {
-        println!("[{}] Failed to find ./llama-cpp/main or ./llama.cpp/main, please carefully read the README", "FAILED".red());
+        panic!("[{}] Failed to find ./llama-cpp/main or ./llama.cpp/main, please carefully read the README", "FAILED".red());
     }
 }

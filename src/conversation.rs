@@ -107,6 +107,9 @@ impl Conversation {
     pub fn push_char(&mut self, chr: char) {
         self.usr_chunk.raw_input.push(chr);
     }
+    pub fn push_string(&mut self, string: &str) {
+        self.usr_chunk.raw_input.push_str(string);
+    }
     pub fn clear_output(&mut self) {
         self.pro_chunk.output.clear();
     }
