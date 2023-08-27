@@ -1,6 +1,5 @@
 use std::path::{Path, PathBuf};
 
-
 pub fn pathbuf_to_string(pathbuf: &Path, desired_length: usize, error_str: &str) -> String {
     let filestem: &str = pathbuf
         .file_stem()

@@ -14,7 +14,6 @@ use ratatui::{
     },
     Frame, Terminal,
 };
-use sysinfo::{SystemExt, CpuRefreshKind};
 use std::{
     io::{self, stdout},
     path::PathBuf,
@@ -23,7 +22,8 @@ use std::{
 
 mod setup;
 use setup::{
-    load_app_configuration, load_default_llama_configuration, load_gguf_models_with_config, check_llama_cpp
+    check_llama_cpp, load_app_configuration, load_default_llama_configuration,
+    load_gguf_models_with_config,
 };
 mod configs;
 use configs::{AppConfig, ModelConfig};
@@ -202,7 +202,7 @@ impl Application {
         .select(self.mode_index)
         .block(
             Block::new()
-                .title(" Sulmo 1.1.1 ")
+                .title(" Sulmo 1.1.2 ")
                 .borders(Borders::all())
                 .border_type(ratatui::widgets::BorderType::Rounded)
                 .title_alignment(Alignment::Right)

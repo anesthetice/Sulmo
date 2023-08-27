@@ -1,11 +1,11 @@
 use serde::{Deserialize, Serialize};
 use serde_json::{self};
-use sysinfo::{SystemExt, RefreshKind};
 use std::{
     fs,
     io::{Read, Write},
     path::{Path, PathBuf},
 };
+use sysinfo::{RefreshKind, SystemExt};
 
 use crate::{conversation::ConversationChunk, utils::pathbuf_helper};
 
@@ -104,7 +104,8 @@ impl Default for ModelConfig {
             threads_used: {
                 let mut info = sysinfo::System::new();
                 info.refresh_cpu();
-                (info.physical_core_count().unwrap_or(2_usize) as u8) * 2
+                // uses half the threads by default
+                info.physical_core_count().unwrap_or(2_usize) as u8
             },
             layers_offloaded_to_gpu: 32,
             prompt_context_size: 2048,
