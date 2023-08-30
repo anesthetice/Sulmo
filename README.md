@@ -6,6 +6,8 @@ built in rust using ratatui
 
 ### installation
 
+I recommend reading the "it doesn't work" section as well
+
 #### for linux (from source)
 1. clone this repository, and open a terminal in the directory
 2. execute the "llama-install.sh" script
@@ -15,9 +17,9 @@ built in rust using ratatui
 2. build the application by running "cargo build --release" in your terminal
 3. download and build llama.cpp inside the directory (https://github.com/ggerganov/llama.cpp)
 
-### for windows (from precompiled binary)
+#### for windows (from precompiled binary)
 1. donwload the latest precompiled .exe version of Sulmo
-2. read the next section
+2. download and build llama.cpp inside the directory (https://github.com/ggerganov/llama.cpp)
 
 ### it doesn't work
 
