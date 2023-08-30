@@ -15,6 +15,19 @@ built in rust using ratatui
 2. build the application by running "cargo build --release" in your terminal
 3. download and build llama.cpp inside the directory (https://github.com/ggerganov/llama.cpp)
 
+### for windows (from precompiled binary)
+1. donwload the latest precompiled .exe version of Sulmo
+2. read the next section
+
+### it doesn't work
+
+If you execute Sulmo in a terminal, it will most likely tell you exactly why it's not working, but to get you up to speed, Sulmo needs just a couple of things to work.
+
+1. llama.cpp to be in the same directory and compiled (i.e. ./llama.cpp/main exist)
+2. you have at least one model in the ./models directory (GGUF model if you are using the latest llama.cpp release, .bin files only)
+
+And that's it, anything else will be automatically generated when launching Sulmo.
+
 ### finding models
 
 You can assemble GGUF models yourself, or you can simply find them online, a great place to start would be Hugging Face : https://huggingface.co
