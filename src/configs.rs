@@ -5,7 +5,7 @@ use std::{
     io::{Read, Write},
     path::{Path, PathBuf},
 };
-use sysinfo::{RefreshKind, SystemExt};
+use sysinfo::SystemExt;
 
 use crate::{conversation::ConversationChunk, utils::pathbuf_helper};
 
@@ -175,7 +175,10 @@ impl ModelConfig {
                 "tokens to predict            :    '{}'",
                 self.tokens_to_predict
             ),
-            format!("threads used                 :    '{}'", self.threads_used),
+            format!(
+                "threads used                 :    '{}'",
+                self.threads_used
+            ),
             format!(
                 "layers offloaded to gpu      :    '{}'",
                 self.layers_offloaded_to_gpu
@@ -184,15 +187,26 @@ impl ModelConfig {
                 "prompt context size          :    '{}'",
                 self.prompt_context_size
             ),
-            format!("randomness                   :    '{}'", self.randomness),
+            format!(
+                "randomness                   :    '{}'",
+                self.randomness
+            ),
             format!(
                 "repeat penalty               :    '{}'",
                 self.repeat_penalty
             ),
-            format!("prompt prefix                :    '{}'", self.prompt_prefix),
-            format!("prompt suffix                :    '{}'", self.prompt_suffix),
-            format!("prefix/suffix displayed      :    '{}'", self.ps_displayed),
-            format!("other arguments              :    '{}'", self.other),
+            format!(
+                "prompt prefix                :    '{}'", self.prompt_prefix
+            ),
+            format!(
+                "prompt suffix                :    '{}'", self.prompt_suffix
+            ),
+            format!(
+                "prefix/suffix displayed      :    '{}'", self.ps_displayed
+            ),
+            format!(
+                "other arguments              :    '{}'", self.other
+            ),
         ]
     }
     pub fn try_update<P: AsRef<Path>>(&mut self, model_filepath: P, other: &[ConversationChunk]) {

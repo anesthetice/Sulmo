@@ -95,7 +95,11 @@ impl Conversation {
         self.usr_chunk.raw_input.as_str()
     }
     pub fn get_pro_input(&self) -> &str {
-        if self.config.ps_displayed {self.pro_chunk.input.as_str()} else {self.pro_chunk.raw_input.as_str()}
+        if self.config.ps_displayed {
+            self.pro_chunk.input.as_str()
+        } else {
+            self.pro_chunk.raw_input.as_str()
+        }
     }
     pub fn pop_back_input(&mut self) {
         if !self.usr_chunk.raw_input.is_empty() {
@@ -128,9 +132,16 @@ impl Conversation {
     pub fn get_past_conversations_str(&self) -> Vec<(&str, &str)> {
         let mut vector: Vec<(&str, &str)> = Vec::new();
         self.past_chunks.iter().for_each(|chunk| {
-            vector.push(({
-                if self.config.ps_displayed {chunk.input.as_str()} else {chunk.raw_input.as_str()}
-            }, chunk.output.as_str()));
+            vector.push((
+                {
+                    if self.config.ps_displayed {
+                        chunk.input.as_str()
+                    } else {
+                        chunk.raw_input.as_str()
+                    }
+                },
+                chunk.output.as_str(),
+            ));
         });
         vector
     }
@@ -140,6 +151,15 @@ impl Conversation {
             self.past_chunks.pop();
         } else {
             self.pro_chunk.clear();
+        }
+    }
+    pub fn get_latest_output(&self) -> &str {
+        if !self.pro_chunk.output.is_empty() {
+            self.pro_chunk.output.as_str()
+        } else if let Some(chunk) = self.past_chunks.last() {
+            chunk.output.as_str()
+        } else {
+            ""
         }
     }
 }

@@ -100,7 +100,7 @@ impl Application {
                                     if let Ok(mut ctx) = rctx {
                                         let _ = ctx.set_contents(
                                             self.conversations[self.conversation_index]
-                                                .get_pro_output()
+                                                .get_latest_output()
                                                 .to_string(),
                                         );
                                     }
