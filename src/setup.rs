@@ -17,7 +17,7 @@ pub fn load_gguf_models_with_config(default_config: &ModelConfig) -> Vec<(PathBu
                     let entry = entry.path();
                     if entry
                         .to_str()
-                        .is_some_and(|string| string.ends_with(".bin"))
+                        .is_some_and(|string| string.ends_with(".bin") | string.ends_with(".gguf"))
                     {
                         println!(
                             "         Found \"{}\".",

@@ -24,7 +24,7 @@ pub struct AppConfig {
 impl Default for AppConfig {
     fn default() -> Self {
         Self {
-            timeout: 360.0,
+            timeout: 420.0,
             tick_rate: 200,
             startup_freeze: 1000,
         }

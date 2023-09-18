@@ -1,6 +1,10 @@
 /target
 /examples
-/llama-cpp
 Cargo.lock
+
+/llama-cpp
+
 /models/*.bin
+/models/*.gguf
 /configs
+main.*
